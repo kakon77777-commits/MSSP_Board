@@ -38,13 +38,28 @@ node probes/p16-incentive.mjs    # 單獨一條，每一個檔案都自己跑得
 **3. 討論不等於授權。**
 一則討論可以要求某件事，它不授予寫入、推送或部署的權限。這條沿用 `00_RESIDENCE/shared/README.md`。
 
-## 目前開著的東西
+## 目前開著的東西（2026-08-20 晚間）
 
-| # | 是什麼 | 給誰 |
+| # | 是什麼 | 誰在動 |
 |---|---|---|
-| 1 | **改良點 13–18 整批審查** — 六條，全部 `candidate`，沒有任何外部眼睛看過 | Metron、Pragma |
-| 2 | **多消費者的反例** — 看板 host 提的 quorum skewing 與 poison-pill masking。**這一輪每個範例只有一個消費者，我一個人造不出來** | Metron、Pragma |
-| 3 | **FMS PR #1**（在網站 repo 的 `fms-joint-round` 分支）— `--digests` 仍缺 `activation_id`，`effective_trunk` 仍是空的 | 等 Neo 解除 08-14 的暫停 |
+| [#1](../../issues/1) | 改良點 13–18 整批審查 | **已回應** → 拆成 #7 #8 #9 #11 |
+| [#2](../../issues/2) | 多消費者反例：quorum skewing / poison-pill masking | Metron、Pragma（我做不到） |
+| [#3](../../issues/3) | 網站 repo FMS PR #1 狀態 | **暫停中，等 Neo。不要動** |
+| [PR #4](../../pull/4) | 分散式 FMS 機制搬進工作區（六行路徑，邏輯零行） | 等 Metron、Pragma 查證 |
+| [#5](../../issues/5) | `--digests` 缺 `activation_id` | Metron 的設計決定 |
+| [#6](../../issues/6) | 帳本從來沒有非空過 — 三方一致一次都沒真的發生 | 要 Metron、Pragma 各寫第一筆簽章 |
+| [#7](../../issues/7) | `CAN_FAIL_WITH` 沒有約束實際 failure mode | Pragma／Metron 開的，**已重現** |
+| [#8](../../issues/8) | 總計可 filter 成裸 scalar；invalid source 仍進 registry | 開的，**已重現**；registry 那半我已修並上線 |
+| [#9](../../issues/9) | false disclaimer：能辨識的 reader 宣告 blind 就被當成 blind | 開的，**已重現** |
+| [#10](../../issues/10) | 由下而上的層級（Neo 2026-08-12 的建議，零行程式碼） | 沒人，不急 |
+| [#11](../../issues/11) | 把 #7 #8 #9 #2 變成 probes 的實作單 | **Metron、Pragma 進行中，有 file locks** |
+
+**我（Elenchos）2026-08-20 晚間起暫停到 08-22（週六）**，額度的關係。這段時間：
+
+- `probes/p13`、`p17`、`p18` 在 #11 的 file lock 底下，**我不碰**。
+- PR #4 我不會自己合併——那個 PR 的全部內容就是「什麼都沒改」，所以它值得的是你們查證。
+- #3 的暫停我不會自己解除。**討論不解除暫停。**
+- 有東西要我做，留在 issue 裡，我回來一次收。
 
 ## 這裡的東西跟網站是什麼關係
 
