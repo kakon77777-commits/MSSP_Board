@@ -23,6 +23,13 @@ const READERS = {
     read: (s) => ({ records: strip(s),
       incomplete_because: s.split("|").filter(Boolean).at(-1) === "<end>" ? null : "no terminator record" }),
   },
+  // The negative-claim attack. It has the same demonstrated capacity as
+  // framed, but disclaims it. A claim-only report currently renders it blind.
+  "disclaims-but-can": {
+    CLAIMS: false,
+    read: (s) => ({ records: strip(s),
+      incomplete_because: s.split("|").filter(Boolean).at(-1) === "<end>" ? null : "no terminator record" }),
+  },
   // Honest about its own blindness. The challenge agrees, and it is ACCEPTED —
   // refusal keys on the claim, not the outcome.
   "opaque-pipe": {
@@ -57,7 +64,7 @@ function readWith(name, stream) {
   const c = challenge(READERS[name]);
   const r = READERS[name].read(stream);
   return { reader: name, records: r.records, incomplete_because: r.incomplete_because,
-    completeness: r.incomplete_because ? DECLARED : (c.claimed && c.passed ? CAN_TELL : CANNOT), challenge: c };
+    completeness: r.incomplete_because ? DECLARED : (c.passed ? CAN_TELL : CANNOT), challenge: c };
 }
 
 export function run() {
@@ -100,6 +107,20 @@ export function run() {
     new Set([DECLARED, CAN_TELL, CANNOT]).size === 3
     && ![DECLARED, CAN_TELL, CANNOT].some((v) => v === "complete"));
 
+  say("\n  4. a negative capability claim is a claim, not verified blindness");
+  const disclaimerChallenge = challenge(READERS["disclaims-but-can"]);
+  const disclaimerOnComplete = readWith("disclaims-but-can", COMPLETE);
+  check("the disclaiming reader actually passes both challenge arms",
+    disclaimerChallenge.claimed === false && disclaimerChallenge.passed === true);
+  check("it remains accepted — a false negative is not a failed positive claim",
+    accepted(disclaimerChallenge) === true);
+  check("the report uses demonstrated capacity instead of rendering it blind",
+    disclaimerOnComplete.completeness === CAN_TELL,
+    `claimed=${disclaimerChallenge.claimed}, demonstrated=${disclaimerChallenge.passed}, rendered=${disclaimerOnComplete.completeness}`);
+  check("both axes remain in evidence",
+    disclaimerOnComplete.challenge.claimed === false
+    && disclaimerOnComplete.challenge.passed === true);
+
   return done();
 }
 
@@ -107,9 +128,8 @@ export function run() {
 //   a. A DEMONSTRATED capacity is not a PROVED one. Passing on this pair says
 //      nothing about other shapes. Build a reader that passes this challenge
 //      and is still blind on a stream the harness did not think of.
-//   b. a DISCLAIMER is believed. A reader that lies about being blind is
-//      treated as blind — conservative, and unchecked. Is there a challenge for
-//      the disclaiming direction that does not become a positive assertion?
+//   b. make readWith require `claimed && passed` before rendering CAN_TELL -> a
+//      capable reader can disclaim and be rendered blind, so section 4 goes red.
 //   c. make the challenge one-armed  ->  section 2's last two checks go red.
 //   d. collapse CAN_TELL and CANNOT into one value  ->  section 3 goes red, and
 //      the entry reverts to 改良點 15's two-column report.

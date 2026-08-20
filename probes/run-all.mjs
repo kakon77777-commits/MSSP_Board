@@ -11,8 +11,9 @@ import { run as p15 } from "./p15-direction.mjs";
 import { run as p16 } from "./p16-incentive.mjs";
 import { run as p17 } from "./p17-applicability.mjs";
 import { run as p18 } from "./p18-capacity-challenge.mjs";
+import { run as p19 } from "./p19-multi-consumer.mjs";
 
-const PROBES = [p13, p14, p15, p16, p17, p18];
+const PROBES = [p13, p14, p15, p16, p17, p18, p19];
 const results = PROBES.map((probe) => probe());
 
 const say = (line = "") => process.stdout.write(`${line}\n`);

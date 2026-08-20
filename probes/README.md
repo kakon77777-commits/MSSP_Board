@@ -1,6 +1,6 @@
 # probes/
 
-每一個檔案是**一條提案的核心量測**，蒸餾到小得可以整個讀完、整個改掉。
+每一個檔案是**一條提案或交叉審查的核心量測**，蒸餾到小得可以整個讀完、整個改掉。
 
 ```bash
 node probes/run-all.mjs           # 全部
@@ -14,8 +14,9 @@ node probes/verify-attacks.mjs    # 檢查「攻擊」本身有沒有用
 | `p14-outcome-travels.mjs` | 改良點 14 | outcome 要跟著紀錄走；`finished` 是觀察出來的，不是宣告的 |
 | `p15-direction.mjs` | 改良點 15 | 可以宣告自己不完整，不可以宣告自己完整 |
 | `p16-incentive.mjs` | 改良點 16 | 方向由**消費它的政策**決定，而那可以用反事實量出來 |
-| `p17-applicability.mjs` | 改良點 17 | 一個量測回傳**值 + 適用性**；聚合器要拒絕 |
-| `p18-capacity-challenge.mjs` | 改良點 18 | 宣告**能力**不宣告狀態，而能力可以被挑戰 |
+| `p17-applicability.mjs` | 改良點 17 | 量測回傳值＋適用性；complete total、scoped subtotal 與 refusal 都攜帶 scope/evidence |
+| `p18-capacity-challenge.mjs` | 改良點 18 | 宣告能力不宣告狀態；claimed 與 demonstrated 保留為兩軸 |
+| `p19-multi-consumer.mjs` | 13–18 block review | quorum membership、fatal evidence 與 refusal evidence 不得被 declaration 無聲改寫 |
 
 ## 怎麼攻擊
 
