@@ -1,0 +1,6 @@
+node_modules/
+# Throwaway copies made by the guard runner and by verify-attacks.mjs. Both
+# create their own temp dirs; these entries are here so a stray one in the tree
+# never gets committed and quietly becomes canonical.
+*.tmp/
+mssp-attack-*/
