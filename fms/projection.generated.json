@@ -1,0 +1,85 @@
+{
+  "_generated": "by scripts/build-fms.mjs, recomputed every build. effective.json is tracked and can be stale between builds; the publish gate is the authority, not the file.",
+  "core_revision": "76a1648f32eb61db",
+  "actors": [
+    "elenchos",
+    "metron",
+    "pragma"
+  ],
+  "consensus_candidates": [],
+  "decisions": [
+    {
+      "by": "elenchos",
+      "id": "elenchos-a1",
+      "kind": "attest",
+      "claim": "every_key_names_its_reader",
+      "digest": "6d49121205915eff",
+      "core_revision": "76a1648f32eb61db",
+      "valid": true,
+      "reasons": [],
+      "withdrawn": false
+    },
+    {
+      "by": "elenchos",
+      "id": "elenchos-a2",
+      "kind": "attest",
+      "claim": "a_structural_claim_must_duplicate_a_fact_that_exists_elsewhere",
+      "digest": "84a446aabee3be2b",
+      "core_revision": "76a1648f32eb61db",
+      "valid": true,
+      "reasons": [],
+      "withdrawn": false
+    },
+    {
+      "by": "elenchos",
+      "id": "elenchos-a3",
+      "kind": "attest",
+      "claim": "fms_should_get_smaller",
+      "digest": "b3792dbcd16a946c",
+      "core_revision": "76a1648f32eb61db",
+      "valid": true,
+      "reasons": [],
+      "withdrawn": false
+    }
+  ],
+  "history": [],
+  "effective_trunk": [],
+  "divergent": [
+    {
+      "id": "a_structural_claim_must_duplicate_a_fact_that_exists_elsewhere",
+      "held_by": [
+        "elenchos"
+      ],
+      "absent_from": [
+        "metron",
+        "pragma"
+      ],
+      "identical": false,
+      "digest": "84a446aabee3be2b"
+    },
+    {
+      "id": "every_key_names_its_reader",
+      "held_by": [
+        "elenchos"
+      ],
+      "absent_from": [
+        "metron",
+        "pragma"
+      ],
+      "identical": false,
+      "digest": "6d49121205915eff"
+    },
+    {
+      "id": "fms_should_get_smaller",
+      "held_by": [
+        "elenchos"
+      ],
+      "absent_from": [
+        "metron",
+        "pragma"
+      ],
+      "identical": false,
+      "digest": "b3792dbcd16a946c"
+    }
+  ]
+}

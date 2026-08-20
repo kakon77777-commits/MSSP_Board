@@ -1,0 +1,4 @@
+{
+  "_note": "Genuinely append-only as of 2026-08-13: entries carry ONLY the immutable facts of an activation. Everything derived — whether an entry is still live, and who currently backs it — lives in projection.generated.json and is recomputed. Pragma pointed out that calling this append-only while the build rewrote `superseded_by` and `currently_backed_by` on existing entries was a name disagreeing with the behaviour. 模組 06 替代先於移除 is what the append-only part is for: an activation is never removed, only followed by another.",
+  "entries": []
+}

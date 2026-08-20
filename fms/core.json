@@ -1,0 +1,18 @@
+{
+  "_what_this_is": "The invariant core of MSSP's own FMS. Every branch carries these keys VERBATIM. A branch that changes one fails the build and is named. This is the teeth behind 差異性可以有，但不能全部都改 — differences are allowed, changing everything is not.",
+  "_who_may_change_it": "All three branches must change it together, and then Neo decides. That is a 大版本改動 under 模組 06 and this file is not a route around it.",
+  "_why_duplicated_rather_than_referenced": "A branch that merely referenced the core could not disagree with it, so nothing would be checkable. The same principle as example 011's units map: a claim is verifiable only when the fact exists in two places and they can be compared.",
+
+  "sets": {
+    "FMS": "第一主母集 — structure, contract and declaration",
+    "SCL": "系統控制層 — what this deployment treats as fatal",
+    "SMS": "第二主母集 — the capabilities without which the system is not itself",
+    "TMS": "第三主母集 — one unit per capability, each an island",
+    "DMS": "展示母集 — what a person can see of what actually happened"
+  },
+
+  "identity_test": "Remove it and ask whether the system is still itself. If yes it is TMS; if no it is SMS.",
+  "island_test": "Load the minimum core and exactly one unit, stub every tool, and run that unit's representative task.",
+  "sibling_rule": "No TMS unit reaches a sibling TMS unit.",
+  "partial_adoption": "度 — FMS + SMS + TMS is already a complete mid-sized MSSP project. A set earns its place by making something possible that was not."
+}

@@ -1,0 +1,74 @@
+{
+  "_branch": "elenchos",
+  "_owner": "Elenchos (Claude, Opus 5 lineage). Nobody else writes this file.",
+  "_position": "FMS is not a description of the system. It is a COMPARISON POINT — its worth is not what it says but what it can disagree with. Measured 2026-08-12 across the corpus: 2 of 24 FMS files re-derive any of their own claims, 7 of 24 have already recorded being wrong, and 80 of 213 top-level keys are prose longer than 60 characters that nothing reads. FMS is the only set with no execution.",
+  "core": {
+    "sets": {
+      "FMS": "第一主母集 — structure, contract and declaration",
+      "SCL": "系統控制層 — what this deployment treats as fatal",
+      "SMS": "第二主母集 — the capabilities without which the system is not itself",
+      "TMS": "第三主母集 — one unit per capability, each an island",
+      "DMS": "展示母集 — what a person can see of what actually happened"
+    },
+    "identity_test": "Remove it and ask whether the system is still itself. If yes it is TMS; if no it is SMS.",
+    "island_test": "Load the minimum core and exactly one unit, stub every tool, and run that unit's representative task.",
+    "sibling_rule": "No TMS unit reaches a sibling TMS unit.",
+    "partial_adoption": "度 — FMS + SMS + TMS is already a complete mid-sized MSSP project. A set earns its place by making something possible that was not."
+  },
+  "proposals": {
+    "every_key_names_its_reader": {
+      "status": "candidate",
+      "kinds": {
+        "derived": "a named producer recomputes it every run; a mismatch fails the build",
+        "enforced": "a named check reads it and can fail",
+        "narrative": "for people only, and no check may cite it"
+      },
+      "why": "The problem is not that prose exists. It is that prose is indistinguishable from contract. `sets.TMS: \"one file per medium\"` read like a contract and was a sentence, and 27 green checks could not tell.",
+      "evidence": "archaeology 010/011 carry a re-measured block and it caught a guessed line count on its first run; every one of the seven recorded corrections was a sentence, not a missing field"
+    },
+    "a_structural_claim_must_duplicate_a_fact_that_exists_elsewhere": {
+      "status": "candidate",
+      "why": "Anything FMS is the sole source of is unfalsifiable by construction. The units map works because the filesystem already knows.",
+      "shipped_in": "mssp/examples/011-store-boundary — FMS.units compared to the tree, both directions, drilled by making FMS lie"
+    },
+    "fms_should_get_smaller": {
+      "status": "candidate",
+      "why": "37% of what FMS says is unreadable prose, and my instinct all month was to add to it. The evidence says the opposite."
+    }
+  },
+  "what_i_do_not_propose": [
+    "an FMS completeness score — it would become another number nobody reads",
+    "requiring everything to be machine-readable. Example 010 measured that a program cannot tell whether an exemption SHOULD be event-scoped; someone has to write that down. The defect is not that human judgement is present, it is that it is unmarked."
+  ],
+  "open": [
+    "Neo's direction of 2026-08-12: MSSP is top-down by construction, and a bottom-up layer needs adding in future. The nearest thing already running is example 011's units check, where the tree tells FMS what exists and FMS must agree — the first place the structure talks back upward rather than being told."
+  ],
+  "core_revision": "76a1648f32eb61db",
+  "_how_to_attest": "Run `node scripts/build-fms.mjs --digests`, then append to your OWN branch's `decisions`: {id, kind:\"attest\", claim, digest, core_revision}. To change your mind, append {id, kind:\"withdraw\", target:<your own earlier attest id>} — the original is never edited, and re-accepting is a third event. Nobody may write a decision into another owner's file, and the mechanism cannot enforce that: `by` comes from the filename. It is a governance rule.",
+  "decisions": [
+    {
+      "id": "elenchos-a1",
+      "kind": "attest",
+      "claim": "every_key_names_its_reader",
+      "digest": "6d49121205915eff",
+      "core_revision": "76a1648f32eb61db",
+      "accepted": "2026-08-13"
+    },
+    {
+      "id": "elenchos-a2",
+      "kind": "attest",
+      "claim": "a_structural_claim_must_duplicate_a_fact_that_exists_elsewhere",
+      "digest": "84a446aabee3be2b",
+      "core_revision": "76a1648f32eb61db",
+      "accepted": "2026-08-13"
+    },
+    {
+      "id": "elenchos-a3",
+      "kind": "attest",
+      "claim": "fms_should_get_smaller",
+      "digest": "b3792dbcd16a946c",
+      "core_revision": "76a1648f32eb61db",
+      "accepted": "2026-08-13"
+    }
+  ]
+}
