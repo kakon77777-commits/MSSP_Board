@@ -60,10 +60,43 @@ const measureAll = (policy) => Object.keys(SOURCES).sort().map((n) => incentive(
 
 // Refuses rather than skipping. A sum that quietly omits what it could not read
 // prints a smaller number with the same confidence as a complete one.
-function total(measured) {
-  const skipped = measured.filter((m) => !m.applicable).map((m) => m.source);
-  if (skipped.length) throw new Error(`cannot total across unmeasured units: ${skipped.join(", ")}`);
-  return measured.reduce((n, m) => n + m.value, 0);
+function total(measured, claim = null) {
+  const domain = claim?.domain ?? measured;
+  const included = measured.filter((item) => item.applicable).map((item) => item.source);
+  const includedSet = new Set(included);
+  const missing = domain.filter((item) => !item.applicable || !includedSet.has(item.source))
+    .map((item) => ({ source: item.source,
+      reason: item.reason ?? "fixed-domain member was not included in measured inputs" }));
+  const evidence = domain;
+  const scope = { kind: claim?.kind ?? "Unspecified",
+    domain: domain.map((item) => item.source) };
+  if (claim === null) {
+    return { kind: "Refused", claim: "Unspecified", reason: "explicit-scope-required",
+      scope, included, missing, evidence };
+  }
+  if (!["CompleteTotal", "ScopedSubtotal"].includes(claim.kind)) {
+    return { kind: "Refused", claim: claim.kind, reason: "unknown-claim-kind",
+      scope, included, missing, evidence };
+  }
+  if (claim.kind === "CompleteTotal" && missing.length > 0) {
+    return { kind: "Refused", claim: "CompleteTotal", reason: "unmeasured-domain-members",
+      scope, included, missing, evidence };
+  }
+  const value = measured.filter((item) => item.applicable)
+    .reduce((sum, item) => sum + item.value, 0);
+  if (claim.kind === "ScopedSubtotal") {
+    return { kind: "ScopedSubtotal", scope, value, included, missing, evidence };
+  }
+  return { kind: "CompleteTotal", scope, value, included, missing: [], evidence };
+}
+
+// Distils the observed Example 019 defect: validation reports a problem, but
+// the vulnerable order still mutates the registry.
+function registerSource(registry, source) {
+  const problem = typeof source.suppressible !== "boolean"
+    ? `${source.name}: suppressible must be an explicit boolean` : null;
+  if (problem === null) registry.set(source.name, source);
+  return { problem, registered: registry.has(source.name) };
 }
 
 export function run() {
@@ -104,12 +137,69 @@ export function run() {
     cleanWith.incomplete_because !== null && cleanWithout.incomplete_because === null);
 
   say("\n  4. the aggregator refuses");
-  let refused = null;
-  try { total(Object.values(retry)); } catch (e) { refused = e.message; }
-  check("a total across an unmeasured unit is refused", refused !== null, refused ?? "it returned a number");
-  check("and the refusal names the unit", /baked-in/.test(refused ?? ""));
+  const fullDomain = Object.values(retry);
+  const refused = total(fullDomain, { kind: "CompleteTotal", domain: fullDomain });
+  check("a total across an unmeasured unit is refused", refused.kind === "Refused", refused.reason);
+  check("and the refusal names the unit", refused.missing.some((item) => item.source === "baked-in"));
+  const measuredDomain = fullDomain.filter((item) => item.applicable);
+  const complete = total(measuredDomain, { kind: "CompleteTotal", domain: measuredDomain });
   check("a total across measured units alone is allowed",
-    total(Object.values(retry).filter((m) => m.applicable)) === 3);
+    complete.kind === "CompleteTotal" && complete.value === 3);
+
+  say("\n  5. aggregate claims carry scope and evidence with the answer");
+  const domain = Object.values(retry);
+  let refusedAnswer = null;
+  try {
+    refusedAnswer = total(domain, { kind: "CompleteTotal", domain });
+  } catch (error) {
+    refusedAnswer = error.message;
+  }
+  check("CompleteTotal with a missing member returns Refused",
+    refusedAnswer?.kind === "Refused" && refusedAnswer.claim === "CompleteTotal");
+  check("Refused names the missing member and preserves every input",
+    refusedAnswer?.missing?.some((item) => item.source === "baked-in") === true
+    && refusedAnswer?.evidence?.length === domain.length);
+  check("Refused carries the fixed claim scope explicitly",
+    refusedAnswer?.scope?.kind === "CompleteTotal"
+    && refusedAnswer.scope.domain.join("|") === "baked-in|declares-openly|never-declares");
+
+  const measured = domain.filter((item) => item.applicable);
+  const subtotal = total(measured, { kind: "ScopedSubtotal", domain });
+  check("ScopedSubtotal carries the included IDs and value",
+    subtotal?.kind === "ScopedSubtotal"
+    && subtotal.value === 3
+    && subtotal.included.join("|") === "declares-openly|never-declares");
+  check("ScopedSubtotal also carries missing IDs and reasons",
+    subtotal?.missing?.some((item) => item.source === "baked-in" && Boolean(item.reason)) === true);
+  check("ScopedSubtotal carries the same explicit domain scope",
+    subtotal?.scope?.kind === "ScopedSubtotal"
+    && subtotal.scope.domain.join("|") === "baked-in|declares-openly|never-declares");
+
+  const applicableDomain = domain.filter((item) => item.applicable);
+  const omittedApplicable = total(
+    applicableDomain.filter((item) => item.source === "never-declares"),
+    { kind: "CompleteTotal", domain: applicableDomain });
+  check("CompleteTotal refuses when an applicable fixed-domain member is omitted",
+    omittedApplicable.kind === "Refused"
+    && omittedApplicable.missing.some((item) => item.source === "declares-openly"),
+    `${omittedApplicable.kind}, missing=${omittedApplicable.missing.map((item) => item.source).join("|")}`);
+
+  const misspelledClaim = total(domain, { kind: "CompletTotal", domain });
+  check("an unknown aggregate claim kind is refused instead of becoming CompleteTotal",
+    misspelledClaim.kind === "Refused"
+    && misspelledClaim.reason === "unknown-claim-kind",
+    `${misspelledClaim.kind}, reason=${misspelledClaim.reason ?? "<none>"}`);
+
+  say("\n  6. invalid registry input cannot survive validation");
+  const registry = new Map();
+  const explicitFalse = registerSource(registry, { name: "baked-valid", suppressible: false });
+  check("explicit suppressible=false is a valid NotApplicable declaration",
+    explicitFalse.problem === null && explicitFalse.registered === true
+    && registry.has("baked-valid"));
+  const invalid = registerSource(registry, { name: "missing-suppressibility" });
+  check("a source missing the boolean field reports a problem and is not registered",
+    Boolean(invalid.problem) && invalid.registered === false
+    && !registry.has("missing-suppressibility"));
 
   return done();
 }
@@ -125,6 +215,13 @@ export function run() {
 //      n/a rather than 0, which is conservative — but conservative is not
 //      verified. p18's challenge idea might apply here; I did not try it.
 //   c. make baked-in suppressible  ->  section 3 goes red.
-//   d. let total() skip instead of raising  ->  section 4 goes red.
+//   d. return a bare scalar from CompleteTotal or ScopedSubtotal -> sections 4
+//      and 5 go red because scope and evidence no longer travel with the claim.
+//   e. omit any unmeasured fixed-domain member from `missing` -> section 5 goes
+//      red; an explicit subtotal may exist, but cannot masquerade as complete.
+//   f. mutate the registry before checking `problem` -> section 6 goes red; an
+//      invalid source cannot be both rejected and canonically registered.
+//   g. let an unknown claim kind fall through -> a misspelling is promoted to
+//      CompleteTotal, and section 5 goes red.
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) run();

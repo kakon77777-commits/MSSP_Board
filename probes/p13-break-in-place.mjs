@@ -17,12 +17,23 @@ const SOURCES = {
 function gather(absent = []) {
   return Object.keys(SOURCES).sort().map((name) => {
     if (absent.includes(name)) return { source: name, outcome: "absent", records: 0, failed: null };
-    const r = SOURCES[name].collect();
+    const source = SOURCES[name];
+    const r = source.collect();
+    let problem = null;
+    if (!Array.isArray(source.CAN_FAIL_WITH) || source.CAN_FAIL_WITH.length === 0) {
+      problem = "the unit declares no failure modes";
+    } else if (r.failed && !source.CAN_FAIL_WITH.includes(r.failed)) {
+      problem = `observed failure ${r.failed} is not declared`;
+    }
+    if (problem) {
+      return { source: name, outcome: "refused", records: 0, failed: r.failed, problem };
+    }
     return {
       source: name,
       outcome: r.failed ? "failed" : (r.records.length ? "worked" : "empty"),
       records: r.records.length,
       failed: r.failed,
+      problem: null,
     };
   });
 }
@@ -56,6 +67,23 @@ export function run() {
   check("an empty CAN_FAIL_WITH is a refusal", mute.CAN_FAIL_WITH.length === 0,
     "a unit that cannot say what a bad day looks like cannot be reported as degraded");
 
+  say("\n  4. the observed failure must be one of the declared modes");
+  const originalRemote = SOURCES["remote-index"];
+  SOURCES["remote-index"] = { ...originalRemote, CAN_FAIL_WITH: ["timeout"] };
+  const mismatched = gather().find((r) => r.source === "remote-index");
+  SOURCES["remote-index"] = originalRemote;
+  check("a timeout-only declaration cannot cover an observed unreachable failure",
+    mismatched.outcome === "refused",
+    `declared=timeout, observed=${mismatched.failed}, outcome=${mismatched.outcome}`);
+  SOURCES["remote-index"] = { ...originalRemote, CAN_FAIL_WITH: [] };
+  const undeclared = gather().find((r) => r.source === "remote-index");
+  SOURCES["remote-index"] = originalRemote;
+  check("an observed failure with no declared modes is refused by the running path",
+    undeclared.outcome === "refused",
+    `declared=<empty>, observed=${undeclared.failed}, outcome=${undeclared.outcome}`);
+  check("the ordinary matching declaration remains a failure observation, not a refusal",
+    remote.outcome === "failed" && SOURCES["remote-index"].CAN_FAIL_WITH.includes(remote.failed));
+
   return done();
 }
 
@@ -69,5 +97,8 @@ export function run() {
 //   d. HARDEST: find a shape where removal and breakage differ in a direction
 //      016 and 017 did not find. Three directions are known: equal (this),
 //      removal-gives-more (p14), removal-cleans-the-report (p15).
+//   e. remove the observed/declaration membership check -> a source declaring
+//      only timeout is accepted after reporting unreachable, and section 4
+//      goes red.
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) run();
