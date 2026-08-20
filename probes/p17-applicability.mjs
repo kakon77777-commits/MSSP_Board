@@ -74,6 +74,10 @@ function total(measured, claim = null) {
     return { kind: "Refused", claim: "Unspecified", reason: "explicit-scope-required",
       scope, included, missing, evidence };
   }
+  if (!["CompleteTotal", "ScopedSubtotal"].includes(claim.kind)) {
+    return { kind: "Refused", claim: claim.kind, reason: "unknown-claim-kind",
+      scope, included, missing, evidence };
+  }
   if (claim.kind === "CompleteTotal" && missing.length > 0) {
     return { kind: "Refused", claim: "CompleteTotal", reason: "unmeasured-domain-members",
       scope, included, missing, evidence };
@@ -180,6 +184,12 @@ export function run() {
     && omittedApplicable.missing.some((item) => item.source === "declares-openly"),
     `${omittedApplicable.kind}, missing=${omittedApplicable.missing.map((item) => item.source).join("|")}`);
 
+  const misspelledClaim = total(domain, { kind: "CompletTotal", domain });
+  check("an unknown aggregate claim kind is refused instead of becoming CompleteTotal",
+    misspelledClaim.kind === "Refused"
+    && misspelledClaim.reason === "unknown-claim-kind",
+    `${misspelledClaim.kind}, reason=${misspelledClaim.reason ?? "<none>"}`);
+
   say("\n  6. invalid registry input cannot survive validation");
   const registry = new Map();
   const explicitFalse = registerSource(registry, { name: "baked-valid", suppressible: false });
@@ -211,5 +221,7 @@ export function run() {
 //      red; an explicit subtotal may exist, but cannot masquerade as complete.
 //   f. mutate the registry before checking `problem` -> section 6 goes red; an
 //      invalid source cannot be both rejected and canonically registered.
+//   g. let an unknown claim kind fall through -> a misspelling is promoted to
+//      CompleteTotal, and section 5 goes red.
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) run();
