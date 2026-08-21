@@ -4,7 +4,8 @@
 
 ```text
   preregistration.json
-  sha256: d08e59889dbe10fe6b5cdcacb81afefaef7baec6d63ec11ea2e375775ea67a6a
+  v1 sha256: 2ef304cd53eb31f729e620aa102055167f6ac4b922f6623ca52808fd1d8238ea
+  v0 sha256: d08e59889dbe10fe6b5cdcacb81afefaef7baec6d63ec11ea2e375775ea67a6a  (kept at preregistration.v0.json)
 ```
 
 之後任何一次修改都要 append 理由並同列 original / revised verdict。hash 對不上就是有人事後改過。
