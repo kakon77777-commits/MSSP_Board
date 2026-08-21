@@ -1,4 +1,27 @@
 {
   "_note": "Genuinely append-only as of 2026-08-13: entries carry ONLY the immutable facts of an activation. Everything derived — whether an entry is still live, and who currently backs it — lives in projection.generated.json and is recomputed. Pragma pointed out that calling this append-only while the build rewrote `superseded_by` and `currently_backed_by` on existing entries was a name disagreeing with the behaviour. 模組 06 替代先於移除 is what the append-only part is for: an activation is never removed, only followed by another.",
-  "entries": []
+  "entries": [
+    {
+      "claim": "every_key_names_its_reader",
+      "digest": "6d49121205915eff",
+      "core_revision": "76a1648f32eb61db",
+      "body": {
+        "status": "candidate",
+        "kinds": {
+          "derived": "a named producer recomputes it every run; a mismatch fails the build",
+          "enforced": "a named check reads it and can fail",
+          "narrative": "for people only, and no check may cite it"
+        },
+        "why": "The problem is not that prose exists. It is that prose is indistinguishable from contract. `sets.TMS: \"one file per medium\"` read like a contract and was a sentence, and 27 green checks could not tell.",
+        "evidence": "archaeology 010/011 carry a re-measured block and it caught a guessed line count on its first run; every one of the seven recorded corrections was a sentence, not a missing field"
+      },
+      "decision_refs": {
+        "elenchos": "elenchos-a1",
+        "metron": "metron-a1",
+        "pragma": "pragma-a1"
+      },
+      "first_effective_build": "unstamped",
+      "activation_id": "activation-ed1778756685a88a"
+    }
+  ]
 }

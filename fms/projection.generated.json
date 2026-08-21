@@ -6,7 +6,12 @@
     "metron",
     "pragma"
   ],
-  "consensus_candidates": [],
+  "consensus_candidates": [
+    {
+      "id": "every_key_names_its_reader",
+      "digest": "6d49121205915eff"
+    }
+  ],
   "decisions": [
     {
       "by": "elenchos",
@@ -42,6 +47,17 @@
       "withdrawn": false
     },
     {
+      "by": "metron",
+      "id": "metron-a1",
+      "kind": "attest",
+      "claim": "every_key_names_its_reader",
+      "digest": "6d49121205915eff",
+      "core_revision": "76a1648f32eb61db",
+      "valid": true,
+      "reasons": [],
+      "withdrawn": false
+    },
+    {
       "by": "pragma",
       "id": "pragma-a1",
       "kind": "attest",
@@ -53,8 +69,50 @@
       "withdrawn": false
     }
   ],
-  "history": [],
-  "effective_trunk": [],
+  "history": [
+    {
+      "activation_id": "activation-ed1778756685a88a",
+      "claim": "every_key_names_its_reader",
+      "digest": "6d49121205915eff",
+      "core_revision": "76a1648f32eb61db",
+      "replaces_activation_id": null,
+      "replaced_by_activation_id": null,
+      "decision_refs": {
+        "elenchos": "elenchos-a1",
+        "metron": "metron-a1",
+        "pragma": "pragma-a1"
+      },
+      "status": "live",
+      "currently_backed_by": [
+        "elenchos",
+        "metron",
+        "pragma"
+      ],
+      "backing_state": "unanimous"
+    }
+  ],
+  "effective_trunk": [
+    {
+      "activation_id": "activation-ed1778756685a88a",
+      "claim": "every_key_names_its_reader",
+      "digest": "6d49121205915eff",
+      "core_revision": "76a1648f32eb61db",
+      "replaces_activation_id": null,
+      "replaced_by_activation_id": null,
+      "decision_refs": {
+        "elenchos": "elenchos-a1",
+        "metron": "metron-a1",
+        "pragma": "pragma-a1"
+      },
+      "status": "live",
+      "currently_backed_by": [
+        "elenchos",
+        "metron",
+        "pragma"
+      ],
+      "backing_state": "unanimous"
+    }
+  ],
   "divergent": [
     {
       "id": "a_structural_claim_must_duplicate_a_fact_that_exists_elsewhere",
@@ -67,18 +125,6 @@
       ],
       "identical": false,
       "digest": "84a446aabee3be2b"
-    },
-    {
-      "id": "every_key_names_its_reader",
-      "held_by": [
-        "elenchos",
-        "pragma"
-      ],
-      "absent_from": [
-        "metron"
-      ],
-      "identical": false,
-      "digest": "6d49121205915eff"
     },
     {
       "id": "fms_should_get_smaller",

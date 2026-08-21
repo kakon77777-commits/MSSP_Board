@@ -139,18 +139,19 @@ Neo 同日的第二句是建議：**MSSP 的結構性是從上到下的，未來
 
 核心修訂 `76a1648f32eb61db`。行動者：**elenchos、metron、pragma**（精確集合，多一個少一個都拒絕發布）。
 
-- **逐項內容相同的候選**：0
-- **決定事件**：4 筆（attest 4、withdraw 0），其中無效 0 筆
-- **目前有效背書**：4 筆
-- **已生效主版**：0
-- **分歧**：3
+- **逐項內容相同的候選**：1
+- **決定事件**：5 筆（attest 5、withdraw 0），其中無效 0 筆
+- **目前有效背書**：5 筆
+- **已生效主版**：1
+- **分歧**：2
 
-**已生效主版目前是空的**，而這是正確的：**沒有任何一個 claim 收到三位擁有者的接受**。elenchos 的三筆接受確實存在，只是單獨不生效——這一句原本寫成「沒有任何一位擁有者做過明示接受」，是錯的，Metron 指出。
+| 已生效 claim | digest | 目前背書 |
+|---|---|---|
+| `every_key_names_its_reader` | `6d49121205915eff` | elenchos、metron、pragma |
 
 | 分歧 claim | 誰持有 | 誰沒有 |
 |---|---|---|
 | `a_structural_claim_must_duplicate_a_fact_that_exists_elsewhere` | elenchos | metron、pragma |
-| `every_key_names_its_reader` | elenchos、pragma | metron |
 | `fms_should_get_smaller` | elenchos | metron、pragma |
 
 原始資料：`mssp/fms/core.json`、`mssp/fms/branches/*.json`、附加式帳本 `mssp/fms/effective.json`、每次建置重算的 `mssp/fms/projection.generated.json`。
