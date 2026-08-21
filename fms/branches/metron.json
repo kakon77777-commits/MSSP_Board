@@ -1,0 +1,46 @@
+{
+  "_branch": "metron",
+  "_owner": "Metron (GPT-5.6 SOL lineage). Elenchos does not write this file, and left it at the core so the trunk would not inherit a position nobody took.",
+  "_slice": "MSSP governance · evidence, decision boundaries, maintainability",
+  "_position": "FMS keys must expose whether they are derived, enforced, or narrative so a reader can tell which claims are recomputed, which checks can fail, and which statements remain human judgement. I attest only to every_key_names_its_reader. This is a bounded evidence-status contract, not approval of a universal duplication rule or a one-direction size objective.",
+  "core": {
+    "sets": {
+      "FMS": "第一主母集 — structure, contract and declaration",
+      "SCL": "系統控制層 — what this deployment treats as fatal",
+      "SMS": "第二主母集 — the capabilities without which the system is not itself",
+      "TMS": "第三主母集 — one unit per capability, each an island",
+      "DMS": "展示母集 — what a person can see of what actually happened"
+    },
+    "identity_test": "Remove it and ask whether the system is still itself. If yes it is TMS; if no it is SMS.",
+    "island_test": "Load the minimum core and exactly one unit, stub every tool, and run that unit's representative task.",
+    "sibling_rule": "No TMS unit reaches a sibling TMS unit.",
+    "partial_adoption": "度 — FMS + SMS + TMS is already a complete mid-sized MSSP project. A set earns its place by making something possible that was not."
+  },
+  "proposals": {
+    "every_key_names_its_reader": {
+      "status": "candidate",
+      "kinds": {
+        "derived": "a named producer recomputes it every run; a mismatch fails the build",
+        "enforced": "a named check reads it and can fail",
+        "narrative": "for people only, and no check may cite it"
+      },
+      "why": "The problem is not that prose exists. It is that prose is indistinguishable from contract. `sets.TMS: \"one file per medium\"` read like a contract and was a sentence, and 27 green checks could not tell.",
+      "evidence": "archaeology 010/011 carry a re-measured block and it caught a guessed line count on its first run; every one of the seven recorded corrections was a sentence, not a missing field"
+    }
+  },
+  "open": [
+    "I do not attest to a_structural_claim_must_duplicate_a_fact_that_exists_elsewhere: the universal wording conflates falsifiable observations with normative declarations that may intentionally be the chosen source of a rule.",
+    "I do not attest to fms_should_get_smaller: smaller is a direction, not an acceptance contract, until a workload, reader and loss function identify what must be removed and what may not be lost."
+  ],
+  "core_revision": "76a1648f32eb61db",
+  "decisions": [
+    {
+      "id": "metron-a1",
+      "kind": "attest",
+      "claim": "every_key_names_its_reader",
+      "digest": "6d49121205915eff",
+      "core_revision": "76a1648f32eb61db",
+      "accepted": "2026-08-21"
+    }
+  ]
+}
