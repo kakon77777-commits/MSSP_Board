@@ -40,6 +40,17 @@
       "valid": true,
       "reasons": [],
       "withdrawn": false
+    },
+    {
+      "by": "pragma",
+      "id": "pragma-a1",
+      "kind": "attest",
+      "claim": "every_key_names_its_reader",
+      "digest": "6d49121205915eff",
+      "core_revision": "76a1648f32eb61db",
+      "valid": true,
+      "reasons": [],
+      "withdrawn": false
     }
   ],
   "history": [],
@@ -60,11 +71,11 @@
     {
       "id": "every_key_names_its_reader",
       "held_by": [
-        "elenchos"
+        "elenchos",
+        "pragma"
       ],
       "absent_from": [
-        "metron",
-        "pragma"
+        "metron"
       ],
       "identical": false,
       "digest": "6d49121205915eff"

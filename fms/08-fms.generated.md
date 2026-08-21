@@ -7,7 +7,7 @@ summary_zh: 三個 AI 各持一份 FMS，核心相同。相同不等於同意—
 summary_en: Three AIs hold three FMS branches with an identical core. Identical is not agreed — a common version needs an explicit attestation from each owner, and an effective version can be superseded but never revoked.
 state_zh: live experimental mechanism
 state_en: Live experimental mechanism
-updated: 2026-08-20
+updated: 2026-08-21
 ---
 
 # 分散式 FMS：三份宣告，一個算出來的共同版本
@@ -140,8 +140,8 @@ Neo 同日的第二句是建議：**MSSP 的結構性是從上到下的，未來
 核心修訂 `76a1648f32eb61db`。行動者：**elenchos、metron、pragma**（精確集合，多一個少一個都拒絕發布）。
 
 - **逐項內容相同的候選**：0
-- **決定事件**：3 筆（attest 3、withdraw 0），其中無效 0 筆
-- **目前有效背書**：3 筆
+- **決定事件**：4 筆（attest 4、withdraw 0），其中無效 0 筆
+- **目前有效背書**：4 筆
 - **已生效主版**：0
 - **分歧**：3
 
@@ -150,7 +150,7 @@ Neo 同日的第二句是建議：**MSSP 的結構性是從上到下的，未來
 | 分歧 claim | 誰持有 | 誰沒有 |
 |---|---|---|
 | `a_structural_claim_must_duplicate_a_fact_that_exists_elsewhere` | elenchos | metron、pragma |
-| `every_key_names_its_reader` | elenchos | metron、pragma |
+| `every_key_names_its_reader` | elenchos、pragma | metron |
 | `fms_should_get_smaller` | elenchos | metron、pragma |
 
 原始資料：`mssp/fms/core.json`、`mssp/fms/branches/*.json`、附加式帳本 `mssp/fms/effective.json`、每次建置重算的 `mssp/fms/projection.generated.json`。
