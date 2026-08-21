@@ -46,6 +46,9 @@ function runBuilder(dir, args = []) {
   }
 }
 
+const readProjection = (dir) => JSON.parse(
+  fs.readFileSync(path.join(dir, "projection.generated.json"), "utf8"));
+
 process.stdout.write("\n== the actor set is exact, not a floor\n");
 let run = sandbox(({ dir }) =>
   fs.writeFileSync(path.join(dir, "branches", "someone-else.json"),
@@ -76,13 +79,17 @@ run = sandbox(({ load, save }) => {
     const b = load(name); b.proposals = { ...(b.proposals ?? {}), drill_claim: body }; save(name, b);
   }
 });
+const reorderedProjection = readProjection(run.dir);
 check("three branches holding the same claim in different key order agree",
-  run.code === 0 && /1 identical candidate/.test(run.out),
+  run.code === 0
+    && reorderedProjection.consensus_candidates.some((entry) => entry.id === "drill_claim"),
   run.out.trim().split("\n")[0]);
 
 process.stdout.write("\n== identical content is NOT approval\n");
 check("and three identical claims with no attestation stay out of the effective trunk",
-  run.code === 0 && /0 effective/.test(run.out), run.out.trim().split("\n")[0]);
+  run.code === 0
+    && !reorderedProjection.effective_trunk.some((entry) => entry.claim === "drill_claim"),
+  run.out.trim().split("\n")[0]);
 
 process.stdout.write("\n== an attestation is bound to what was read\n");
 run = sandbox(({ load, save }) => {
@@ -93,15 +100,6 @@ run = sandbox(({ load, save }) => {
 check("editing a claim invalidates its own author's attestation",
   /INVALID .*fms_should_get_smaller.*changed since it was attested/.test(run.out),
   run.out.trim().split("\n").find((l) => l.includes("INVALID"))?.trim());
-run = sandbox(({ load, save }) => {
-  const b = load("elenchos");
-  b.decisions[0].core_revision = "0000000000000000";
-  save("elenchos", b);
-});
-check("an attestation against another core revision is invalid",
-  /INVALID .*different core revision/.test(run.out),
-  run.out.trim().split("\n").find((l) => l.includes("INVALID"))?.trim());
-
 process.stdout.write("\n== the one that matters: an effective entry is superseded, never revoked\n");
 // Objection 4. In v1, one branch editing a key removed it from the trunk, which
 // treated proposing a candidate as cancelling a version the other two held.
@@ -120,6 +118,18 @@ const coreRevision = execFileSync(process.execPath, [builder, "--digests"],
   { env: { ...process.env, FMS_DIR: dirWithClaim }, encoding: "utf8" })
   .split("\n")[0].trim().split(/\s+/).at(-1);
 
+run = sandbox(({ load, save }) => {
+  attestAll({ load, save });
+  const b = load("elenchos");
+  b.decisions = [...(b.decisions ?? []),
+    { id: "elenchos-drill-wrong-core", kind: "attest", claim: "drill_claim",
+      digest: digestOf, core_revision: "0000000000000000" }];
+  save("elenchos", b);
+});
+check("an attestation against another core revision is invalid",
+  /INVALID .*drill_claim.*different core revision/.test(run.out),
+  run.out.trim().split("\n").find((l) => l.includes("INVALID") && l.includes("drill_claim"))?.trim());
+
 const withThreeAttestations = ({ load, save }) => {
   attestAll({ load, save });
   for (const name of ["elenchos", "metron", "pragma"]) {
@@ -131,8 +141,11 @@ const withThreeAttestations = ({ load, save }) => {
   }
 };
 run = sandbox(withThreeAttestations);
+const activatedProjection = readProjection(run.dir);
+const activatedRow = activatedProjection.effective_trunk.find((entry) => entry.claim === "drill_claim");
 check("three attestations over one claim make it effective",
-  run.code === 0 && /1 effective/.test(run.out), run.out.trim().split("\n")[0]);
+  run.code === 0 && activatedRow?.status === "live" && activatedRow?.backing_state === "unanimous",
+  run.out.trim().split("\n")[0]);
 const activatedLedger = JSON.parse(fs.readFileSync(path.join(run.dir, "effective.json"), "utf8"));
 const activatedEntry = activatedLedger.entries.find((e) => e.claim === "drill_claim");
 check("an activation carries an id and exactly one decision ref per actor",
@@ -158,7 +171,7 @@ const projectionAfter = JSON.parse(
   fs.readFileSync(path.join(effectiveDir, "projection.generated.json"), "utf8"));
 const row = projectionAfter.effective_trunk.find((e) => e.claim === "drill_claim");
 check("one branch proposing a change does NOT remove the effective entry",
-  Boolean(entry) && row?.status === "live" && /1 effective/.test(after),
+  Boolean(entry) && row?.status === "live",
   after.trim().split("\n")[0]);
 check("the ledger entry itself carries no derived state",
   entry.currently_backed_by === undefined && entry.superseded_by === undefined,
@@ -194,7 +207,8 @@ const prepareReplacement = ({ target = "current", claimId = "drill_claim",
       ...(targetId ? { replaces_activation_id: targetId } : {}) });
     fs.writeFileSync(file, JSON.stringify(branch, null, 2), "utf8");
   }
-  return { dir, first, replacementDigest, result: runBuilder(dir) };
+  return { dir, first, replacementDigest, baselineEntryCount: firstLedger.entries.length,
+    result: runBuilder(dir) };
 };
 
 const replacement = prepareReplacement();
@@ -226,11 +240,12 @@ check("projection derives one superseded activation followed by one live activat
   const projection = JSON.parse(
     fs.readFileSync(path.join(attempt.dir, "projection.generated.json"), "utf8"));
   const history = projection.history.filter((entry) => entry.claim === "drill_claim");
+  const liveDrillRow = projection.effective_trunk.find((entry) => entry.claim === "drill_claim");
   check("withdrawing from the replacement contests it without reviving the old activation",
     result.code === 0 && history.length === 2
       && history[0]?.status === "superseded"
       && history[1]?.status === "live" && history[1]?.backing_state === "contested"
-      && projection.effective_trunk[0]?.activation_id === history[1]?.activation_id,
+      && liveDrillRow?.activation_id === history[1]?.activation_id,
     history.map((entry) => `${entry.status}/${entry.backing_state}`).join(", "));
 }
 
@@ -262,6 +277,7 @@ check("projection derives one superseded activation followed by one live activat
   const projection = JSON.parse(
     fs.readFileSync(path.join(attempt.dir, "projection.generated.json"), "utf8"));
   const history = projection.history.filter((entry) => entry.claim === "drill_claim");
+  const liveDrillRow = projection.effective_trunk.find((entry) => entry.claim === "drill_claim");
   check("an explicit three-owner rollback appends a third activation",
     result.code === 0 && entries.length === 3
       && entries[2]?.digest === entries[0]?.digest
@@ -269,8 +285,7 @@ check("projection derives one superseded activation followed by one live activat
     `${entries.length} activations; ${entries[2]?.replaces_activation_id} replaces ${entries[1]?.activation_id}`);
   check("rollback preserves both earlier activations and makes only the third live",
     history.map((entry) => entry.status).join(",") === "superseded,superseded,live"
-      && projection.effective_trunk.length === 1
-      && projection.effective_trunk[0]?.activation_id === history[2]?.activation_id,
+      && liveDrillRow?.activation_id === history[2]?.activation_id,
     history.map((entry) => `${entry.status}:${entry.activation_id}`).join(", "));
 }
 
@@ -285,7 +300,7 @@ for (const [label, options, expected] of [
   const attempt = prepareReplacement(options);
   const attemptLedger = JSON.parse(fs.readFileSync(path.join(attempt.dir, "effective.json"), "utf8"));
   check(`${label} do not activate`,
-    attemptLedger.entries.length === 1 && attempt.result.out.includes(expected),
+    attemptLedger.entries.length === attempt.baselineEntryCount && attempt.result.out.includes(expected),
     attempt.result.out.split("\n").find((line) => line.includes(expected))?.trim());
 }
 
@@ -385,10 +400,10 @@ process.stdout.write("\n== withdrawal is an event, not a flag on the old one\n")
   fs.writeFileSync(path.join(dir, "branches", "pragma.json"), JSON.stringify(branch, null, 2), "utf8");
   const out = execFileSync(process.execPath, [builder],
     { env: { ...process.env, FMS_DIR: dir }, encoding: "utf8" });
-  check("a withdrawal leaves the already-effective entry live",
-    /1 effective/.test(out), out.trim().split("\n")[0]);
   const projection = JSON.parse(fs.readFileSync(path.join(dir, "projection.generated.json"), "utf8"));
   const withdrawnRow = projection.effective_trunk.find((e) => e.claim === "drill_claim");
+  check("a withdrawal leaves the already-effective entry live",
+    withdrawnRow?.status === "live", out.trim().split("\n")[0]);
   check("history axis says live, state axis says contested",
     withdrawnRow?.status === "live" && withdrawnRow?.backing_state === "contested",
     `${withdrawnRow?.status} / ${withdrawnRow?.backing_state} / ${withdrawnRow?.currently_backed_by.join(", ")}`);
@@ -399,7 +414,8 @@ process.stdout.write("\n== withdrawal is an event, not a flag on the old one\n")
 }
 run = sandbox(({ load, save }) => {
   const branch = load("pragma");
-  branch.decisions = [{ id: "pragma-w0", kind: "withdraw", target: "elenchos-a1" }];
+  branch.decisions = [...(branch.decisions ?? []),
+    { id: "pragma-w0", kind: "withdraw", target: "elenchos-a1" }];
   save("pragma", branch);
 });
 check("a withdrawal aimed at another owner's attestation is invalid",
