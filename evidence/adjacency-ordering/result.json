@@ -76,27 +76,19 @@
     "label": "arm B (different second)",
     "order": [
       "text-editor-basic",
-      "markdown-editor",
       "file-manager-basic",
+      "markdown-editor",
       "spreadsheet",
       "git-client"
     ],
-    "app2": "markdown-editor",
+    "app2": "file-manager-basic",
     "rows": [
-      {
-        "capability": "doc-state",
-        "class": "domain",
-        "consumers": [
-          "text-editor-basic",
-          "markdown-editor"
-        ]
-      },
       {
         "capability": "file-io",
         "class": "generic_infra",
         "consumers": [
           "text-editor-basic",
-          "markdown-editor"
+          "file-manager-basic"
         ]
       },
       {
@@ -104,7 +96,7 @@
         "class": "generic_infra",
         "consumers": [
           "text-editor-basic",
-          "markdown-editor"
+          "file-manager-basic"
         ]
       },
       {
@@ -112,15 +104,7 @@
         "class": "generic_infra",
         "consumers": [
           "text-editor-basic",
-          "markdown-editor"
-        ]
-      },
-      {
-        "capability": "text-render",
-        "class": "domain",
-        "consumers": [
-          "text-editor-basic",
-          "markdown-editor"
+          "file-manager-basic"
         ]
       },
       {
@@ -128,24 +112,16 @@
         "class": "generic_infra",
         "consumers": [
           "text-editor-basic",
-          "markdown-editor"
-        ]
-      },
-      {
-        "capability": "undo-redo",
-        "class": "domain",
-        "consumers": [
-          "text-editor-basic",
-          "markdown-editor"
+          "file-manager-basic"
         ]
       }
     ],
-    "total": 7,
+    "total": 4,
     "generic": 4,
-    "domain": 3,
+    "domain": 0,
     "unclassified": 0
   },
-  "excessTotal": 0,
-  "excessDomain": 0,
+  "excessTotal": 3,
+  "excessDomain": 3,
   "excessGeneric": 0
 }

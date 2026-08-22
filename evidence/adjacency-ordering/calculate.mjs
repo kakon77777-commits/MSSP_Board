@@ -30,6 +30,10 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 // a defect caught by the wrong check.
 const argIndex = process.argv.indexOf("--manifest");
 const OVERRIDE = argIndex > -1 ? process.argv[argIndex + 1] : null;
+// --verify recomputes and compares against the tracked artifact instead of
+// overwriting it, so a stale committed result is caught rather than silently
+// repaired by whoever happens to run the calculator next.
+const VERIFY = process.argv.includes("--verify");
 const PIN_PATH = OVERRIDE ? path.resolve(OVERRIDE) : path.join(here, "preregistration.json");
 const PIN_BYTES = fs.readFileSync(PIN_PATH);
 const PIN_SHA256 = crypto.createHash("sha256").update(PIN_BYTES).digest("hex");
@@ -133,10 +137,29 @@ export function run() {
     fail.push("registered prediction did not hold");
   }
 
-  const raw = JSON.stringify({ A, B, excessTotal, excessDomain, excessGeneric }, null, 2);
+  const raw = `${JSON.stringify({ A, B, excessTotal, excessDomain, excessGeneric }, null, 2)}\n`;
   const rawSha = crypto.createHash("sha256").update(raw).digest("hex");
-  fs.writeFileSync(path.join(here, "result.json"), `${raw}\n`, "utf8");
-  say(`\n  raw rows written to result.json, sha256 ${rawSha}`);
+  const RESULT_PATH = path.join(here, "result.json");
+
+  if (OVERRIDE) {
+    // An unpinned run must NEVER write the canonical artifact. The first
+    // version did, so the attack fixtures overwrote the published evidence
+    // with their own output and the committed result.json ended up recording
+    // 7 vs 7 - the artifact denying the very claim its commit message made.
+    say(`\n  raw rows NOT written: this is an unpinned run, sha256 ${rawSha}`);
+  } else if (VERIFY) {
+    const tracked = fs.existsSync(RESULT_PATH) ? fs.readFileSync(RESULT_PATH, "utf8") : null;
+    const fresh = tracked === raw;
+    say(`\n  --verify: tracked result.json matches a fresh run: ${fresh}`);
+    if (!fresh) {
+      say("  The committed evidence artifact is STALE. It does not say what this");
+      say("  calculator says, and a reader would take the file, not the run.");
+      fail.push("tracked result.json is stale");
+    }
+  } else {
+    fs.writeFileSync(RESULT_PATH, raw, "utf8");
+    say(`\n  raw rows written to result.json, sha256 ${rawSha}`);
+  }
 
   say("\n  EVIDENCE LEVEL: spike on a stated model. Not a measurement of built");
   say("  software. causal_claim_allowed = false — this shows the mechanism can");
@@ -162,6 +185,10 @@ export function run() {
 //      because the mechanism needs the orders to differ.
 //   d. swap the prediction to "arm B higher" -> PREDICTION HELD must go false.
 //      A prediction that cannot fail is decoration.
+//   e. hand-edit result.json, then run with --verify -> must report the tracked
+//      artifact as STALE. Found by Pragma on PR #15: the committed result.json
+//      recorded 7 vs 7 while the commit message claimed 7 vs 4, because an
+//      unpinned attack run had written over it.
 //
 // b and c MUST go through --manifest. Run against the pinned file they go red
 // on the hash check instead — red for a reason that has nothing to do with what
