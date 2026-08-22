@@ -1,69 +1,134 @@
-# slice 01 — text-editor-basic（預註冊）
+# slice 01 — text-editor-basic（預註冊 v2）
 
-**這是預註冊，不是實作。** 照 charter v0：先寫下要做什麼、用什麼判定、以及**它要怎麼樣才會難看**，然後才開實作分支。
+> **這個檔案是產生出來的。** 不要手改 —— 改 `preregistration.json` 然後跑
+> `node slices/01-text-editor-basic/render-readme.mjs`。
+> `--check` 會在它過期時 exit 1。
 
 ```text
-  preregistration.json
-  v1 sha256: 2ef304cd53eb31f729e620aa102055167f6ac4b922f6623ca52808fd1d8238ea
-  v0 sha256: d08e59889dbe10fe6b5cdcacb81afefaef7baec6d63ec11ea2e375775ea67a6a  (kept at preregistration.v0.json)
+  preregistration.json  sha256 d1f78318a9399a788b92363f75673c9ec552f6058c4ff6e97f70210db4728fa1
+  v0 sha256 d08e59889dbe10fe6b5cdcacb81afefaef7baec6d63ec11ea2e375775ea67a6a  (preregistration.v0.json)
+  v1 sha256 2ef304cd53eb31f729e620aa102055167f6ac4b922f6623ca52808fd1d8238ea  (preregistration.v1.json)
 ```
 
-之後任何一次修改都要 append 理由並同列 original / revised verdict。hash 對不上就是有人事後改過。
+**這是預註冊，不是實作。** 目標平台 **Windows 11 x64**，其他 OS = `NotMeasured`。
 
-## 一句話
+## 產品工作流（11 步）
 
-**開一個 UTF-8 文字檔、改它、undo/redo、find/replace、存檔、關掉程式、重開、看到剛才的修改。**
+1. launch the packaged application
+2. create a new empty document and type into it
+3. save it with Save As to a new path
+4. select text, cut it, and paste it back
+5. open a pinned UTF-8 fixture from disk
+6. edit its contents
+7. undo and redo those edits
+8. find and replace within the document
+9. save
+10. close the application, relaunch it, and manually reopen the file
+11. an EXTERNAL oracle verifies the saved bytes and line endings against the expected value
 
-整個迴圈包含**重開**，因為**一份從來沒有被重新載入過的持久化，不是持久化**。
+**The program must not be its own oracle. Bytes it wrote being equal to bytes it reads back is a statement about one program, not about correctness.**
 
-## 分母（固定）
+## 固定分母：11 項
 
 | 類 | capabilities |
 |---|---|
-| generic infra | `ui-shell` `settings-store` `persistence` `file-io` `error-report` |
-| domain | `doc-state` `undo-redo` `text-render` `find-replace` `encoding-and-eol` `dirty-guard` |
+| generic infra | `ui-shell` `error-report` |
+| domain | `document-io` `document-state` `undo-redo` `text-view-edit` `find-replace` `encoding-eol` `unsaved-change-guard` `new-saveas` `clipboard` |
 
-把其中任何一項切成十個模組**不會改變這個分母**。
+Every capability maps to a DISTINCT failable row. No row may be cited by two capabilities without an independent assertion, and a capability with no row may not be in the denominator.
 
-## 這一則是 app 1，所以它不能產生共用
+| capability | 怎麼觀察 |
+|---|---|
+| `ui-shell` | every workflow step is driven through it; a step needing an internal call fails ui_complete |
+| `error-report` | attack: the invalid-not-utf8 fixture is refused BY NAME and the name reaches the GUI |
+| `document-io` | steps 5 and 9 - reading and writing the user's document |
+| `document-state` | steps 2 and 6 |
+| `undo-redo` | step 7 |
+| `text-view-edit` | steps 2 and 6 - what is typed is what is shown |
+| `find-replace` | step 8 |
+| `encoding-eol` | step 11 - external oracle checks bytes and line endings across LF, CRLF and BOM fixtures |
+| `unsaved-change-guard` | attack: close with unsaved changes by a route the acceptance does not drive |
+| `new-saveas` | steps 2 and 3 |
+| `clipboard` | step 4 |
 
-照 charter：**app 1 的每一項都只能是 `local`**。要等到第二個應用的 production path 用同一份 contract，才可能是 `shared_candidate`。**app 1 建立，不重用。**
+## v1 → v2 改了什麼
 
-## 明說不做的
+**v1 kept settings-store by ADDING recent-files and window-geometry to the product workflow**（Metron 提）
 
-語法高亮、多分頁／分割視窗、放不進記憶體的檔案、UTF-8 以外的編碼（**遇到就具名拒絕，不猜**）、協同編輯、外掛。
+settings-store and app-state persistence are REMOVED from app 1's denominator. 13 capabilities become 11.
 
-**先寫下來，是為了讓「之後把難的那步搬進這裡」變成看得見的 workflow shrinkage，而不是看起來像釐清範圍。**
+> This is the one that stings. Pragma said settings-store had no acceptance step; instead of asking whether it belonged in the denominator at all, I grew the product scope until it did. That is foundation stuffing by another route - keeping a capability alive by inventing workflow for it. A basic text editor does not need recent files or window restore to be a basic text editor. If either appears while building, it is recorded as a local observation and does NOT enter this round's denominator or any reuse numerator.
 
-## comparator
+**settings-store and persistence both cited step 9 - one observable effect counted as two capabilities**（Metron 提）
 
-`kind: design-only`、`causal_claim_allowed: false`。
+moot after removal; the rule is now explicit - every capability must map to a DISTINCT failable evidence row, and no row may be cited twice without an independent assertion
 
-只會蓋一邊，所以這一則的 `mssp_effect_verdict` **由建構決定就是 `unknown`**——而且要**照實報出來**，不是省略不提。design-only 的對照可以幫助決策，不能支撐「MSSP 比較好」。
+**document-io is not needed by every windowed application, so classing it generic would hand app2 and app6 undeserved generic reuse credit**（Pragma 提）
 
-## 成員名單：**我只填我自己**
+generic_infra is now only ui-shell and error-report; document-io moved to domain
 
-`Elenchos` = `implementation_builder` + `acceptance_author`。
+**README described six domain capabilities and the old workflow while the JSON had eight and a ten-step workflow**（Metron and Pragma 提）
 
-**Metron 與 Pragma 的角色要他們自己宣告，我不代填。** 一份由單一方寫出來的成員名單，就是 FMS 那個「三份簽章是同一個 Node 行程寫的」缺陷（[#6](https://github.com/kakon77777-commits/MSSP_Board/issues/6)）——我不會在第一個 slice 就重演。
+README regenerated from this file in the same commit; a drift check is part of the acceptance protocol
 
-release gate 需要**至少一位不是最終產品樹的 `implementation_builder` 的獨立攻擊通過**。
+> The human handout and the canonical preregistration disagreed about the denominator. Two views of one document that can disagree is the same defect the FMS units map was built to stop.
 
-## 驗收
+**the membership artifact still said pending for Metron and Pragma after both had self-declared**（Pragma 提）
 
-- **能用** = 上面那個 primary workflow，可重跑的自動驗收。**同一份 artifact 兩個用途**，所以它不可能跟分母漂移。
-- **UI 完備** = 分母裡每一項都要**從 GUI 完成得了**，而且驗收是**驅動 GUI**，不是呼叫內部 API。
-- **BUG 稀少** = 全部缺陷都記（含建造者自己找到的），release 只做 **bounded claim**：預註冊的 workflow 與範圍內沒有 open blocker/critical、驗收與回歸重跑通過、至少一次獨立攻擊通過。**不是「這支程式 bug 很少」。**
+entries now carry each party's own declaration reference; I still author only my own row
+
+**no execution environment was preregistered, so acceptance could not be recomputed on another machine**（Metron and Pragma 提）
+
+target OS, runtime, package form, fixtures with hashes, EOL/BOM policy, timing policy and start/end events are all pinned below
+
+## 技術與邊界
+
+- **Stack**：Electron + TypeScript + CodeMirror (plain-text mode)，GUI 自動化用 Playwright Electron API。
+- **驗收跑的是** the packaged executable, never a dev server。
+- **Playwright Electron 是 experimental**：official docs mark Electron automation experimental; the version used goes into the evidence, and if an upgrade breaks it that is reported as an integration failure rather than fixed by changing the acceptance
+- **對話框覆蓋**：自動化那條標 `dialog_path=stubbed`，原生 Open/Save As 另有一份 smoke，**前者永遠不能當成後者**。
+- **效能 = `NotMeasured`**。a second-count verdict without pinned CPU, RAM, storage and background load is false precision只記原始時間，hang detector 每個 GUI 動作 30s、整個流程上限 180s。
+- **外部套件不算 MSSP 地基**：Electron, CodeMirror and Playwright themselves never count toward any local or shared MSSP foundation。a TMS that is only a one-caller no-state wrapper over a CodeMirror API triggers module-splitting; naming it a capability does not make it an architectural result
+- **物理拓樸不預註冊**（`preregistered: false`）。假設是「each domain capability may become one TMS unit」，證偽條件：a unit with no state of its own, exactly one caller, and no ability to be exercised alone by the island test is evidence the hypothesis was wrong for that capability
+
+## Fixtures（預先雜湊）
+
+| key | 檔案 | bytes | sha256 |
+|---|---|---|---|
+| small_lf | `small-lf.txt` | 17 | `4fdbc441ea7b5461…` |
+| small_crlf | `small-crlf.txt` | 20 | `c8dba68945249de9…` |
+| small_bom | `small-utf8-bom.txt` | 14 | `bf7a11618542a830…` |
+| normal_1mib_lf | `normal-1mib-lf.txt` | 1048575 | `e17f98ce439b3ae6…` |
+| invalid_not_utf8 | `invalid-not-utf8.bin` | 14 | `19324eed10b46b4b…` |
+
+Pinned by hash before implementation. The 1 MiB fixture exists to stop tiny-fixture laundering, not to support a latency claim.
+
+## 實作切片
+
+- **A0 file loop** — packaged launch, new/open/edit/Save As/save, unsaved-change guard, manual reopen, external byte and EOL oracle
+- **A1 editing loop** — undo/redo, selection and clipboard, find/replace
+- **A2 boundary loop** — UTF-8/BOM/EOL policy, named GUI refusal of invalid encoding, full regression and packaging evidence
+
+Each slice starts RED with contract and GUI tests before any production code. The final denominator does not change because of implementation order.
+
+## 角色
+
+| 誰 | 角色 | 誰宣告的 |
+|---|---|---|
+| Elenchos | implementation_builder + acceptance_author | Elenchos — this file |
+| Metron | reviewer + attack_author | Metron — PR #14 comment 5366635281; Board 3b18559a |
+| Pragma | reviewer + attack_author | Pragma — PR #14 review 4990830147; Board 0a2a8c05 |
+
+**at least one independent attack pass by a party that is not an implementation_builder of the FINAL product tree digest**
 
 ## 這一則會怎麼難看
 
-- GUI 完成不了六項 domain capability 的其中一項 → `ui_complete` 失敗；
-- 重開之後的檔案**不是位元組相同**（含行尾）→ workflow 最後一步失敗；
-- MSSP 的切分產出一堆各自沒有獨立意義的薄檔案 → **那是我對自己做 module-splitting**；
-- 花的時間明顯超過九天 → **那是關於這個半年計畫排程的證據，要報出來，不能吸收掉**。
+- the GUI cannot complete one of the nine domain capabilities without an internal call, and ui_complete fails
+- the reopened file is not byte-identical and the external oracle rejects it
+- a capability turns out to be a thin CodeMirror wrapper, which is module-splitting done to myself
+- the acceptance can only drive stubbed dialogs, so native-dialog coverage stays NotMeasured and must be reported as such
+- a capability in capability_acceptance_map has no observable step that can actually fail, which would make the map decoration
 
 ## 停止邊界
 
-**在 Metron 與 Pragma 各自宣告角色並對這份文件表態之前，不開實作分支。**
-
-Neo 已把設計決定交給我們三個，他不審這份文件。
+**No scaffold, no toolkit installation, no production code until Metron and Pragma accept this v2 and it returns to Neo's approval gate. Neo has delegated the design decision to the three AIs; the gate is that all three accept, not that I judge it ready.**

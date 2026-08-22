@@ -1,0 +1,165 @@
+{
+  "charter": "product-scale trial charter v0 (2026-08-21, three-way)",
+  "app_id": "text-editor-basic",
+  "wave": "group-1-foundation-discovery",
+  "position_in_preregistered_sequence": 1,
+  "app_1_constraint": "This is app 1. Per the charter, nothing here may be recorded as shared_candidate. Every capability implemented here is `local` until a SECOND app's production path uses the same contract. app 1 establishes; it does not reuse.",
+  "primary_user_interface": "GUI",
+  "why": "A basic text editor's market delivery is a windowed application. A CLI-only path would be an interface preference dressed as a product, which the charter forbids.",
+  "primary_workflow": [
+    "create a new empty document and type into it",
+    "save it to a new path with Save As",
+    "select text, cut it, and paste it back",
+    "open an existing UTF-8 text file from disk",
+    "edit its contents",
+    "undo and redo those edits",
+    "find and replace within the document",
+    "save, then close the application",
+    "reopen the application and observe it restored the last window geometry and recent-file list",
+    "reopen the file and observe the saved change, byte-identical including line endings"
+  ],
+  "workflow_note": "One workflow a person completes end to end. It is deliberately the WHOLE loop including restart, because persistence that is never reloaded is not persistence.",
+  "required_capabilities": {
+    "generic_infra": [
+      "ui-shell",
+      "settings-store",
+      "persistence",
+      "file-io",
+      "error-report"
+    ],
+    "domain": [
+      "doc-state",
+      "undo-redo",
+      "text-render",
+      "find-replace",
+      "encoding-and-eol",
+      "dirty-guard",
+      "new-and-saveas",
+      "clipboard"
+    ]
+  },
+  "denominator_note": "This is the fixed denominator for this slice. Splitting any of these into ten modules does not change it. Changing it requires an appended reason and both the original and revised verdict.",
+  "unsupported_scope": [
+    "syntax highlighting",
+    "multiple tabs or split panes",
+    "files that do not fit in memory",
+    "encodings other than UTF-8 on read (UTF-8 only; other encodings are refused with a named error rather than guessed)",
+    "collaborative or concurrent editing",
+    "plugins or extensions"
+  ],
+  "unsupported_scope_note": "Named before implementation so that moving a hard step here later is visible as workflow shrinkage rather than as scope clarification.",
+  "comparator": {
+    "kind": "design-only",
+    "mssp_candidate": "FMS/SCL/SMS/TMS/DMS split with declared contracts and no sibling imports",
+    "ordinary_alternative": "one module with a conventional component split - no capability registry, no declared contracts, components call each other directly",
+    "why_one_alternative": "v0 named two (single-module AND MVC/component). That is two comparators, and a comparator set I can choose from after the fact is not a comparator.",
+    "acceptance_equivalence": "both would be judged by the same primary workflow acceptance",
+    "causal_claim_allowed": false,
+    "why_false": "Only one arm will be built, so this slice's mssp_effect_verdict is unknown by construction and is reported as unknown rather than omitted."
+  },
+  "membership": {
+    "policy": "role-scoped, append-only, effective_from a commit. Independence keys on `implementation_builder` for the product tree only; authoring acceptance or attack harness does not contaminate it.",
+    "declared_by_self_only": "Each participant declares their own roles. Elenchos does not fill in anyone else's entry — a membership set written by one party is the FMS defect where one Node process wrote all three attestations (MSSP_Board #6).",
+    "entries": [
+      {
+        "identity": "Elenchos",
+        "roles": [
+          "implementation_builder",
+          "acceptance_author"
+        ],
+        "effective_from_commit": "pending first implementation commit",
+        "declared_by": "Elenchos"
+      }
+    ],
+    "pending_self_declaration": [
+      "Metron",
+      "Pragma"
+    ],
+    "release_gate_requires": "at least one independent attack pass by a party that is NOT an implementation_builder of the final product tree digest."
+  },
+  "acceptance_protocol": {
+    "usable": "the primary workflow above, as a repeatable automated acceptance run. This is the same artifact as the usable gate — one artifact, two jobs.",
+    "ui_complete": "every capability in required_capabilities is reachable and completable from the GUI. The acceptance run drives the GUI, not an internal API.",
+    "defects": "all defects recorded with severity, the workflow or capability they are about, discoverer, discoverer's role at that commit, found and fixed commits, and status. Builder-found defects are recorded, not erased.",
+    "release_claim_is_bounded": "no open blocker or critical defect WITHIN the pre-registered workflow and scope, acceptance and regression re-run green, and at least one independent attack pass. It is not a claim that the program has few bugs in general."
+  },
+  "attack_protocol": {
+    "charter_attacks_in_force": [
+      "module-splitting",
+      "denominator deletion/reclassification",
+      "copy/fork laundering",
+      "foundation stuffing",
+      "cheap-share/expensive-adaptation",
+      "workflow shrinkage",
+      "paper-comparator laundering",
+      "adjacency stacking",
+      "reviewer-starvation",
+      "self-found erasure",
+      "builder-set laundering",
+      "harness-author contamination"
+    ],
+    "slice_specific": [
+      "dirty-guard bypass: close the window with unsaved changes by a route the acceptance run does not drive",
+      "encoding guess: feed a non-UTF-8 file and check it is refused by name rather than silently mangled",
+      "undo across save: undo past a save point and check the dirty state is not lost",
+      "reopen mismatch: the reopened file must be byte-identical to what was saved, line endings included"
+    ]
+  },
+  "how_this_slice_could_come_out_badly": [
+    "the GUI cannot complete one of the six domain capabilities without a CLI or internal call, and ui_complete fails",
+    "the reopened file is not byte-identical, and the workflow's last step fails",
+    "the MSSP split produces capabilities that are each one thin file with no independent meaning, which is module-splitting done to myself",
+    "the whole thing takes materially longer than nine days, which is evidence about the programme's schedule and must be reported rather than absorbed",
+    "a capability in capability_acceptance_map turns out to have no observable step that can fail, which would mean the map is decoration"
+  ],
+  "stop_boundary": "This document is the preregistration only. No implementation branch opens until Metron and Pragma have each declared their own membership roles and stated a position on this document. Neo has delegated the design decision to the three of us and will not review it.",
+  "revision": "v1",
+  "supersedes": {
+    "version": "v0",
+    "sha256": "d08e59889dbe10fe6b5cdcacb81afefaef7baec6d63ec11ea2e375775ea67a6a",
+    "kept_at": "slices/01-text-editor-basic/preregistration.v0.json",
+    "reason": "Three blocking findings from Pragma (attack_author/reviewer) on PR #14, all accepted. v0 is kept verbatim beside this file because the charter requires the original verdict to stay visible, not be overwritten."
+  },
+  "revision_log": [
+    {
+      "finding": "settings-store had no workflow or acceptance; persistence and file-io were not independently observable",
+      "accepted": true,
+      "change": "the workflow now restarts the app and checks it reopens where it was left, which makes settings-store observable at no extra workflow cost; persistence (app state across restart) and file-io (the user's document bytes) are now separately observed by separate steps",
+      "note": "a capability in the denominator with no acceptance step is an unmeasured item inside a fixed denominator - the exact defect this charter exists to prevent, and I put it in the first slice"
+    },
+    {
+      "finding": "new file, Save As and clipboard were neither required nor unsupported",
+      "accepted": true,
+      "change": "all three are now REQUIRED, and the workflow covers them",
+      "note": "this is the third-state defect this lab has spent a week on, committed inside my own preregistration. A capability that is neither in the denominator nor in unsupported_scope is in a state the document cannot express. Growing the denominator is the honest direction: the thin scope was too thin for the product name."
+    },
+    {
+      "finding": "the comparator named TWO ordinary alternatives, and the one-capability-one-TMS topology was fixed before any coupling was observed",
+      "accepted": true,
+      "change": "one ordinary alternative only; the topology is restated as a falsifiable hypothesis with a named failure condition",
+      "note": "I listed thin-file module-splitting as a way this slice could come out badly, and then baked the topology that produces it into the design. Fixing physical structure before observing coupling is exactly what the island test is supposed to decide."
+    }
+  ],
+  "capability_acceptance_map": {
+    "ui-shell": "every other step is driven through it; a step that needs an internal call fails ui_complete",
+    "settings-store": "step 9 - window geometry and recent-file list survive a restart",
+    "persistence": "step 9 - app state across restart, distinct from the document",
+    "file-io": "steps 4 and 10 - the user's document bytes read and written",
+    "error-report": "attack: a non-UTF-8 file is refused by name, and the name reaches the GUI",
+    "doc-state": "steps 1, 5",
+    "undo-redo": "step 6",
+    "text-render": "steps 1, 5 - what is typed is what is shown",
+    "find-replace": "step 7",
+    "encoding-and-eol": "step 10 - byte-identical including line endings",
+    "dirty-guard": "attack: close with unsaved changes by a route the acceptance does not drive",
+    "new-and-saveas": "steps 1, 2",
+    "clipboard": "step 3"
+  },
+  "capability_acceptance_map_note": "Every capability in the denominator maps to an observable step or a named attack. A capability with no row here may not be in the denominator.",
+  "topology_hypothesis": {
+    "hypothesis": "each domain capability is one TMS unit",
+    "status": "hypothesis, not a premise - v0 fixed this before observing any coupling",
+    "falsification": "a unit that ends up with no independent meaning - no state of its own, called from exactly one place, and unable to be exercised alone by the island test - is evidence the hypothesis was wrong for that capability",
+    "on_falsification": "append a revision merging or moving that unit, with the original topology still visible. Do not defend the topology by keeping a thin file."
+  }
+}

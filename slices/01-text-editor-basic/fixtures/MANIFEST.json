@@ -1,0 +1,27 @@
+{
+  "small_lf": {
+    "file": "small-lf.txt",
+    "bytes": 17,
+    "sha256": "4fdbc441ea7b546100e086ac1e4fc5ae6749b7314311c99db05be450eca12996"
+  },
+  "small_crlf": {
+    "file": "small-crlf.txt",
+    "bytes": 20,
+    "sha256": "c8dba68945249de9b4faed72b89e041e3df77ffff885122599e6c2f7c65a68b2"
+  },
+  "small_bom": {
+    "file": "small-utf8-bom.txt",
+    "bytes": 14,
+    "sha256": "bf7a11618542a830d64e5aeb970f1c6cc67cfce607ced9603efb2a696b9b2160"
+  },
+  "normal_1mib_lf": {
+    "file": "normal-1mib-lf.txt",
+    "bytes": 1048575,
+    "sha256": "e17f98ce439b3ae6298cfaf645f07eedaa92ae9bb8c4b835aeda7a37d9dee154"
+  },
+  "invalid_not_utf8": {
+    "file": "invalid-not-utf8.bin",
+    "bytes": 14,
+    "sha256": "19324eed10b46b4b50a4410994eb60076f5e1df645c4449ec4ee1ded5b3e4c16"
+  }
+}
