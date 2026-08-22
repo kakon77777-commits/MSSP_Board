@@ -1,0 +1,19 @@
+{
+  "purpose": "Pre-registration for the adjacency-stacking probe. Pinned BEFORE the run, because a classification chosen after seeing the result is not a classification.",
+  "evidence_level_intended": "spike on a stated model - NOT a measurement of the real portfolio",
+  "classification_basis": "generic_infra = a capability any windowed application needs regardless of what it is for. domain = a capability that exists because of what this particular product does.",
+  "generic_infra": ["ui-shell", "settings-store", "persistence", "file-io", "logging", "error-report"],
+  "domain": ["doc-state", "undo-redo", "text-render", "md-render", "grid-render", "dep-graph", "fs-walk", "bulk-op", "perms", "history", "diff-render", "refs"],
+  "model_app_capabilities": {
+    "text-editor-basic": ["ui-shell", "settings-store", "persistence", "file-io", "doc-state", "undo-redo", "text-render"],
+    "markdown-editor": ["ui-shell", "settings-store", "persistence", "file-io", "doc-state", "undo-redo", "text-render", "md-render"],
+    "file-manager-basic": ["ui-shell", "settings-store", "persistence", "file-io", "fs-walk", "bulk-op", "perms"],
+    "spreadsheet": ["ui-shell", "settings-store", "persistence", "file-io", "doc-state", "undo-redo", "dep-graph", "grid-render"],
+    "git-client": ["ui-shell", "settings-store", "persistence", "file-io", "history", "diff-render", "refs"]
+  },
+  "arm_A_order": ["text-editor-basic", "markdown-editor", "file-manager-basic", "spreadsheet", "git-client"],
+  "arm_B_order": ["text-editor-basic", "file-manager-basic", "markdown-editor", "spreadsheet", "git-client"],
+  "only_difference": "positions 2 and 3 are swapped. Nothing else differs - same apps, same capability map, same classification.",
+  "prediction_registered_before_running": "arm A yields a strictly higher shared_candidate count at app 2 than arm B, and the excess is entirely in the domain class.",
+  "how_it_could_come_out_badly": "if the two arms tie at app 2, or if arm A's excess is in generic_infra rather than domain, the adjacency-stacking mechanism is not demonstrated by this model and the claim must be withdrawn."
+}

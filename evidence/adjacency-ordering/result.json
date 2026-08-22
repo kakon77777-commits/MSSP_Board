@@ -1,0 +1,127 @@
+{
+  "A": {
+    "label": "arm A (near-twin second)",
+    "order": [
+      "text-editor-basic",
+      "markdown-editor",
+      "file-manager-basic",
+      "spreadsheet",
+      "git-client"
+    ],
+    "app2": "markdown-editor",
+    "rows": [
+      {
+        "capability": "doc-state",
+        "class": "domain",
+        "consumers": [
+          "text-editor-basic",
+          "markdown-editor"
+        ]
+      },
+      {
+        "capability": "file-io",
+        "class": "generic_infra",
+        "consumers": [
+          "text-editor-basic",
+          "markdown-editor"
+        ]
+      },
+      {
+        "capability": "persistence",
+        "class": "generic_infra",
+        "consumers": [
+          "text-editor-basic",
+          "markdown-editor"
+        ]
+      },
+      {
+        "capability": "settings-store",
+        "class": "generic_infra",
+        "consumers": [
+          "text-editor-basic",
+          "markdown-editor"
+        ]
+      },
+      {
+        "capability": "text-render",
+        "class": "domain",
+        "consumers": [
+          "text-editor-basic",
+          "markdown-editor"
+        ]
+      },
+      {
+        "capability": "ui-shell",
+        "class": "generic_infra",
+        "consumers": [
+          "text-editor-basic",
+          "markdown-editor"
+        ]
+      },
+      {
+        "capability": "undo-redo",
+        "class": "domain",
+        "consumers": [
+          "text-editor-basic",
+          "markdown-editor"
+        ]
+      }
+    ],
+    "total": 7,
+    "generic": 4,
+    "domain": 3,
+    "unclassified": 0
+  },
+  "B": {
+    "label": "arm B (different second)",
+    "order": [
+      "text-editor-basic",
+      "file-manager-basic",
+      "markdown-editor",
+      "spreadsheet",
+      "git-client"
+    ],
+    "app2": "file-manager-basic",
+    "rows": [
+      {
+        "capability": "file-io",
+        "class": "generic_infra",
+        "consumers": [
+          "text-editor-basic",
+          "file-manager-basic"
+        ]
+      },
+      {
+        "capability": "persistence",
+        "class": "generic_infra",
+        "consumers": [
+          "text-editor-basic",
+          "file-manager-basic"
+        ]
+      },
+      {
+        "capability": "settings-store",
+        "class": "generic_infra",
+        "consumers": [
+          "text-editor-basic",
+          "file-manager-basic"
+        ]
+      },
+      {
+        "capability": "ui-shell",
+        "class": "generic_infra",
+        "consumers": [
+          "text-editor-basic",
+          "file-manager-basic"
+        ]
+      }
+    ],
+    "total": 4,
+    "generic": 4,
+    "domain": 0,
+    "unclassified": 0
+  },
+  "excessTotal": 3,
+  "excessDomain": 3,
+  "excessGeneric": 0
+}
