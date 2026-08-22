@@ -1,0 +1,5 @@
+node_modules/
+# Throwaway copies made by guard runners and drill scripts. Both create their own
+# temp dirs; these entries stop a stray one becoming canonical by accident.
+*.tmp/
+mssp-attack-*/
