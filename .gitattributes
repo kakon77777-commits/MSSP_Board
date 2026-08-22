@@ -1,1 +1,7 @@
 * -text
+
+# The CRLF fixture is intentional: it is pinned by hash and its bytes are the
+# subject of the encoding-eol capability. Tell the whitespace checker that CR
+# is an end-of-line here, rather than asking every reviewer to remember a local
+# -c flag. Narrow on purpose - no global weakening.
+slices/01-text-editor-basic/fixtures/small-crlf.txt -text whitespace=cr-at-eol
