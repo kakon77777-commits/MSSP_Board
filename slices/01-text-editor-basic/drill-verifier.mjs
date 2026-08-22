@@ -92,6 +92,57 @@ const DRILLS = [
       return true;
     },
   },
+  // g-i exist because the verifier used to compare only the manifest's KEY SET.
+  // Measured before the fix: zeroing a manifest sha256 and setting its bytes to
+  // 999999 left the verifier at exit 0. A manifest check existed, so the
+  // manifest looked covered.
+  {
+    label: "g. mutate a MANIFEST entry's sha256",
+    apply(dir) {
+      const p = path.join(dir, "fixtures", "MANIFEST.json");
+      const m = readJson(p);
+      const key = Object.keys(m)[0];
+      if (!key) return false;
+      m[key].sha256 = "0".repeat(64);
+      writeJson(p, m);
+      return true;
+    },
+  },
+  {
+    label: "h. mutate a MANIFEST entry's bytes",
+    apply(dir) {
+      const p = path.join(dir, "fixtures", "MANIFEST.json");
+      const m = readJson(p);
+      const key = Object.keys(m).at(-1);
+      if (!key) return false;
+      m[key].bytes = m[key].bytes + 1;
+      writeJson(p, m);
+      return true;
+    },
+  },
+  {
+    label: "i. mutate a MANIFEST entry's file name",
+    apply(dir) {
+      const p = path.join(dir, "fixtures", "MANIFEST.json");
+      const m = readJson(p);
+      const key = Object.keys(m)[1] ?? Object.keys(m)[0];
+      if (!key) return false;
+      m[key].file = `renamed-${m[key].file}`;
+      writeJson(p, m);
+      return true;
+    },
+  },
+  {
+    label: "j. add a MANIFEST entry nothing declares",
+    apply(dir) {
+      const p = path.join(dir, "fixtures", "MANIFEST.json");
+      const m = readJson(p);
+      if ("drill_extra" in m) return false;
+      m.drill_extra = { file: "drill-extra.txt", bytes: 1, sha256: "0".repeat(64) };
+      writeJson(p, m);
+      return true;
+    },
+  },
   {
     label: "f. make the generated README stale",
     apply(dir) {

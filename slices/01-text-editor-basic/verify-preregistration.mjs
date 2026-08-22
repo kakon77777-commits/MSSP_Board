@@ -69,6 +69,22 @@ export function verify(root = ROOT) {
     check("preregistration fixture set equals the manifest set",
       JSON.stringify(declared) === JSON.stringify(inManifest),
       `prereg [${declared}] vs manifest [${inManifest}]`);
+
+    // Per-entry exact match, all three fields. The first version compared only
+    // the KEY SET, so MANIFEST.json's own sha256 could be zeroed and its bytes
+    // set to 999999 with nothing complaining - and because a manifest check
+    // existed, the manifest looked covered. Measured before fixing: the
+    // verifier exited 0 on exactly that mutation.
+    for (const key of declared) {
+      const a = (d.fixtures ?? {})[key];
+      const b = manifest[key];
+      if (!a || !b) continue;               // the set check above owns this case
+      for (const field of ["file", "bytes", "sha256"]) {
+        check(`manifest ${key}.${field} equals the preregistration`,
+          a[field] === b[field], `prereg ${a[field]} vs manifest ${b[field]}`);
+      }
+    }
+
     for (const [key, want] of Object.entries(d.fixtures ?? {})) {
       const file = path.join(root, "fixtures", want.file);
       if (!fs.existsSync(file)) {
