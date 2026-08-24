@@ -69,6 +69,8 @@ test("a real LF file passes exact bytes and EOL", async () => {
   assert.equal(result.exit_code, 0);
   assert.equal(result.readers.agree, true);
   assert.equal(result.actual.sha256, "e49c81e2d2f84e259d40e2fb8192f3bcd198b355184845d76d8f58807d0d78ee");
+  assert.equal(result.actual.bom, "none");
+  assert.equal(result.expected.bom, "none");
   assert.deepEqual(result.actual.eol, { kind: "lf", crlf: 0, lf: 2, cr: 0 });
   assert.deepEqual(result.issues, []);
 });
@@ -84,6 +86,56 @@ test("a real CRLF file passes without newline normalization", async () => {
 
   assert.equal(result.status, "pass");
   assert.deepEqual(result.actual.eol, { kind: "crlf", crlf: 2, lf: 0, cr: 0 });
+});
+
+test("an independently pinned 1 MiB LF artifact crosses every chunk boundary", async () => {
+  const { verifyFile } = await oracle();
+  const bytes = Buffer.alloc(1024 * 1024, 0x61);
+  for (let index = 63; index < bytes.length; index += 64) bytes[index] = 0x0a;
+  const result = verifyFile({
+    actualPath: write("one-mib-lf.bin", bytes),
+    expectedHex: hex(bytes),
+    expectedEol: "lf",
+  });
+
+  assert.equal(result.status, "pass");
+  assert.equal(result.actual.bytes, 1048576);
+  assert.equal(result.actual.sha256,
+    "b296500510fd7c928cc908160ed0df61ee96123dea7987fd19fd6b22f46a0700");
+  assert.equal(result.actual.bom, "none");
+  assert.deepEqual(result.actual.eol, { kind: "lf", crlf: 0, lf: 16384, cr: 0 });
+  assert.equal(result.readers.whole_sha256, result.readers.chunked_sha256);
+});
+
+test("raw non-UTF-8 bytes pass without decoding", async () => {
+  const { verifyFile } = await oracle();
+  const bytes = Buffer.from([0xff, 0xfe, 0x80, 0x00, 0x0a]);
+  const result = verifyFile({
+    actualPath: write("non-utf8.bin", bytes),
+    expectedHex: "fffe80000a",
+    expectedEol: "lf",
+  });
+
+  assert.equal(result.status, "pass");
+  assert.equal(result.actual.bom, "none");
+  assert.deepEqual(result.actual.eol, { kind: "lf", crlf: 0, lf: 1, cr: 0 });
+});
+
+test("a missing UTF-8 BOM is identified separately from the byte mismatch", async () => {
+  const { verifyFile } = await oracle();
+  const actual = Buffer.from("alpha\n", "utf8");
+  const expected = Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), actual]);
+  const result = verifyFile({
+    actualPath: write("missing-bom.txt", actual),
+    expectedHex: hex(expected),
+    expectedEol: "lf",
+  });
+
+  assert.equal(result.status, "actual_mismatch");
+  assert.equal(result.actual.bom, "none");
+  assert.equal(result.expected.bom, "utf8");
+  assert.deepEqual(result.issues.map(({ code }) => code),
+    ["bytes_mismatch", "bom_mismatch"]);
 });
 
 test("readers agreeing on wrong bytes reports actual_mismatch, not oracle failure", async () => {
@@ -171,6 +223,8 @@ test("CLI emits stable JSON and distinct pass versus mismatch exits", () => {
   assert.equal(pass.status, 0, pass.stderr);
   const passBody = JSON.parse(pass.stdout);
   assert.equal(passBody.status, "pass");
+  assert.equal(passBody.actual.bom, "utf8");
+  assert.equal(passBody.expected.bom, "utf8");
   assert.deepEqual(passBody.actual.eol, { kind: "lf", crlf: 0, lf: 1, cr: 0 });
 
   const mismatch = spawnSync(process.execPath,

@@ -43,6 +43,16 @@ const ATTACKS = [
     from: "    agree: wholeBytes.equals(chunkedBytes),",
     to: "    agree: true,",
   },
+  {
+    label: "UTF-8 BOM classification is inverted",
+    from: '    ? "utf8"\n    : "none";',
+    to: '    ? "none"\n    : "utf8";',
+  },
+  {
+    label: "chunked reader returns only its first chunk",
+    from: "      chunks.push(Buffer.from(scratch.subarray(0, count)));",
+    to: "      chunks.push(Buffer.from(scratch.subarray(0, count)));\n      break;",
+  },
   { label: "CONTROL. change nothing", control: true },
 ];
 
