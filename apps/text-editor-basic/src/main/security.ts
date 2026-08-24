@@ -84,4 +84,13 @@ export function isNavigationAllowed(target: string): boolean {
  */
 export const PRELOAD_API_SURFACE: readonly string[] = Object.freeze([
   "appVersion",
+  // A0's file loop. Each is a named function with checked arguments, added one
+  // at a time as a workflow step needed it — never a filesystem handle and
+  // never `ipcRenderer`, whose absence the contract test asserts rather than
+  // assumes. A1 will add its own names the same way.
+  "openDocument",
+  "saveDocument",
+  "saveDocumentAs",
+  "newDocument",
+  "setDirty",
 ]);
