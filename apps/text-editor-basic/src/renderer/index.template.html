@@ -1,0 +1,43 @@
+<!doctype html>
+<!--
+  A0 / packaged launch — the renderer shell.
+
+  The Content-Security-Policy below is a PLACEHOLDER, filled in at build time by
+  scripts/render-renderer.mjs from contentSecurityPolicy() in the security
+  contract. Do not paste a policy here.
+
+  A hand-written copy would be a second declaration of the same rule, free to
+  drift from the first — the failure that cost the cross-provider line three
+  missed sites on 2026-08-23. dist/renderer/index.html is generated, never
+  edited, and `npm run build:check` turns red if it is stale.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="__CSP__" />
+    <title>text-editor-basic</title>
+    <style>
+      body {
+        font: 14px/1.5 system-ui, sans-serif;
+        margin: 0;
+        padding: 2rem;
+        color: #1a1a1a;
+        background: #fdfdfd;
+      }
+      @media (prefers-color-scheme: dark) {
+        body { color: #e8e8e8; background: #1c1c1c; }
+      }
+      code { font-family: ui-monospace, monospace; }
+    </style>
+  </head>
+  <body>
+    <h1>text-editor-basic</h1>
+    <p>
+      A0 — packaged launch. The editing surface arrives in A1; this window
+      exists so the security boundary can be measured in the place it actually
+      applies.
+    </p>
+    <p>Electron <code id="version">unknown</code></p>
+    <script src="./renderer.js"></script>
+  </body>
+</html>
