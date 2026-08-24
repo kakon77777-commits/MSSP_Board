@@ -13,6 +13,12 @@ const VALID_EOL = new Set(["none", "lf", "crlf", "cr", "mixed"]);
 
 const sha256 = (bytes) => crypto.createHash("sha256").update(bytes).digest("hex");
 
+function detectBom(bytes) {
+  return bytes.length >= 3 && bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf
+    ? "utf8"
+    : "none";
+}
+
 export function profileEol(bytes) {
   const raw = Buffer.from(bytes);
   let crlf = 0;
@@ -54,6 +60,7 @@ function expectedEvidence(bytes, expectedEol) {
   return {
     bytes: bytes.length,
     sha256: sha256(bytes),
+    bom: detectBom(bytes),
     eol: expectedEol,
   };
 }
@@ -100,9 +107,10 @@ export function evaluateReads({ actualPath, whole, chunked, expectedHex, expecte
   }
 
   const eol = profileEol(wholeBytes);
-  const actual = { bytes: wholeBytes.length, sha256: wholeHash, eol };
+  const actual = { bytes: wholeBytes.length, sha256: wholeHash, bom: detectBom(wholeBytes), eol };
   const issues = [];
   if (!wholeBytes.equals(spec.bytes)) issues.push({ code: "bytes_mismatch" });
+  if (actual.bom !== expected.bom) issues.push({ code: "bom_mismatch" });
   if (eol.kind !== expectedEol) issues.push({ code: "eol_mismatch" });
 
   return {
