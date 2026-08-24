@@ -111,4 +111,3 @@ export function run() {
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   process.exitCode = run().bad === 0 ? 0 : 1;
 }
-

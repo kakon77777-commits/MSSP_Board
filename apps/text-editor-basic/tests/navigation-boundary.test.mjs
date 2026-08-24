@@ -109,4 +109,3 @@ test("rejects a directory junction that escapes the renderer root", async (t) =>
   const escaped = pathToFileURL(path.join(link, "secret.txt")).href;
   assert.equal(await allowed(escaped), false);
 });
-
