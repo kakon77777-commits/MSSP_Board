@@ -7,7 +7,8 @@
 //
 // `ipcRenderer` is exposed nowhere. Every function is a named operation with a
 // fixed channel and no caller-supplied channel argument, so the renderer can ask
-// for the five things A0 defines and cannot ask for anything else. Argument
+// only for the A0 document operations and A1 clipboard operations declared
+// below; it cannot select any other channel. Argument
 // checking happens in the main process — a check on this side runs on the side
 // that can be compromised.
 import { contextBridge, ipcRenderer } from "electron";
@@ -30,3 +31,9 @@ contextBridge.exposeInMainWorld(
 
 contextBridge.exposeInMainWorld(
   "setDirty", (dirty: boolean) => ipcRenderer.invoke("document:setDirty", dirty));
+
+contextBridge.exposeInMainWorld(
+  "readClipboardText", () => ipcRenderer.invoke("clipboard:readText"));
+
+contextBridge.exposeInMainWorld(
+  "writeClipboardText", (text: string) => ipcRenderer.invoke("clipboard:writeText", text));

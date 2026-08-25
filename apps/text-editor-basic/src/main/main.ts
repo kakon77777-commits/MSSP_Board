@@ -4,7 +4,7 @@
 // from ./documents. This file is the wiring, and it is deliberately thin: if it
 // computed a boundary value of its own, the contract test and the running window
 // could disagree, and the running window is the one users get.
-import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
+import { app, BrowserWindow, clipboard, dialog, ipcMain, shell } from "electron";
 import path from "node:path";
 
 import {
@@ -22,6 +22,12 @@ interface OpenDocument {
 }
 
 let current: OpenDocument = { filePath: null, ...newDocument(), dirty: false };
+// Distinguish a newer edit report from the one a pending Save started with.
+// Native Save As can leave the main process awaiting a dialog while the
+// renderer continues to report edits; that later dirty state must survive the
+// older write completing.
+let dirtyRevision = 0;
+let documentEpoch = 0;
 
 const TEST_MODE = process.env.TEXT_EDITOR_TEST_MODE === "1";
 
@@ -58,6 +64,21 @@ function requireString(value: unknown, channel: string): string {
   return value;
 }
 
+function requireBoolean(value: unknown, channel: string): boolean {
+  if (typeof value !== "boolean") {
+    throw new DocumentRefusal(channel, "expected a boolean argument");
+  }
+  return value;
+}
+
+function requireArgumentCount(args: unknown[], expected: number, channel: string): void {
+  if (args.length === expected) return;
+  const shape = expected === 0
+    ? "expected no arguments"
+    : `expected exactly ${expected} argument${expected === 1 ? "" : "s"}`;
+  throw new DocumentRefusal(channel, shape);
+}
+
 /** Refuse a destructive document transition without changing current state. */
 function unsavedChangeRefusal(operation: "New" | "Open") {
   return {
@@ -70,21 +91,40 @@ function unsavedChangeRefusal(operation: "New" | "Open") {
 function registerChannels(): void {
   // Every handler validates its own arguments here in the main process. A check
   // in the preload would run on the side that can be compromised.
-  ipcMain.handle("document:new", () => {
+  ipcMain.handle("document:new", (_event, ...args: unknown[]) => {
+    requireArgumentCount(args, 0, "document:new");
     if (current.dirty) return unsavedChangeRefusal("New");
     current = { filePath: null, ...newDocument(), dirty: false };
+    documentEpoch += 1;
     return { ok: true, text: "", fileName: null, dialogPath: dialogPathMark() };
   });
 
-  ipcMain.handle("document:open", async (event) => {
+  ipcMain.handle("document:open", async (event, ...args: unknown[]) => {
+    requireArgumentCount(args, 0, "document:open");
     const win = BrowserWindow.fromWebContents(event.sender);
     if (!win) return { ok: false, error: "no window" };
+    const startedDirtyRevision = dirtyRevision;
     if (current.dirty) return unsavedChangeRefusal("Open");
+    const startedEpoch = documentEpoch;
     const chosen = await choosePath(win, "open");
     if (chosen === null) return { ok: false, cancelled: true, dialogPath: dialogPathMark() };
+    if (documentEpoch !== startedEpoch) {
+      return {
+        ok: false,
+        blocked: true,
+        error: "Open refused: the document changed while open was pending",
+        dialogPath: dialogPathMark(),
+      };
+    }
+    // A native dialog yields the event loop. Refuse if an edit arrived while it
+    // was open instead of replacing content that was clean only at click time.
+    if (dirtyRevision !== startedDirtyRevision && current.dirty) {
+      return unsavedChangeRefusal("Open");
+    }
     try {
       const doc = readDocument(chosen);
       current = { filePath: path.resolve(chosen), bom: doc.bom, eol: doc.eol, dirty: false };
+      documentEpoch += 1;
       return {
         ok: true, text: doc.text, fileName: path.basename(chosen),
         dialogPath: dialogPathMark(),
@@ -101,8 +141,10 @@ function registerChannels(): void {
     }
   });
 
-  ipcMain.handle("document:save", async (event, text: unknown) => {
-    const body = requireString(text, "document:save");
+  ipcMain.handle("document:save", async (event, ...args: unknown[]) => {
+    requireArgumentCount(args, 1, "document:save");
+    const body = requireString(args[0], "document:save");
+    const started = { dirtyRevision, documentEpoch };
     const win = BrowserWindow.fromWebContents(event.sender);
     if (!win) return { ok: false, error: "no window" };
     let target = current.filePath;
@@ -110,31 +152,81 @@ function registerChannels(): void {
       target = await choosePath(win, "save");
       if (target === null) return { ok: false, cancelled: true, dialogPath: dialogPathMark() };
     }
-    return writeCurrent(target, body);
+    return writeStartedCurrent(target, body, started);
   });
 
-  ipcMain.handle("document:saveAs", async (event, text: unknown) => {
-    const body = requireString(text, "document:saveAs");
+  ipcMain.handle("document:saveAs", async (event, ...args: unknown[]) => {
+    requireArgumentCount(args, 1, "document:saveAs");
+    const body = requireString(args[0], "document:saveAs");
+    const started = { dirtyRevision, documentEpoch };
     const win = BrowserWindow.fromWebContents(event.sender);
     if (!win) return { ok: false, error: "no window" };
     const target = await choosePath(win, "save");
     if (target === null) return { ok: false, cancelled: true, dialogPath: dialogPathMark() };
-    return writeCurrent(target, body);
+    return writeStartedCurrent(target, body, started);
   });
 
   // The renderer reports edits; main holds the flag, because main is what
   // refuses the close. A dirty flag living only in the renderer would be a
   // guard asking the compromised side whether to let it through.
-  ipcMain.handle("document:setDirty", (_event, dirty: unknown) => {
-    current.dirty = dirty === true;
+  ipcMain.handle("document:setDirty", (_event, ...args: unknown[]) => {
+    requireArgumentCount(args, 1, "document:setDirty");
+    current.dirty = requireBoolean(args[0], "document:setDirty");
+    dirtyRevision += 1;
     return { ok: true, dirty: current.dirty };
+  });
+
+  // Clipboard is an external boundary, but Electron's text API has already
+  // produced a JavaScript string. Preserve that string exactly; do not invent
+  // a byte decoder and then claim it measured malformed clipboard bytes.
+  ipcMain.handle("clipboard:readText", (_event, ...args: unknown[]) => {
+    requireArgumentCount(args, 0, "clipboard:readText");
+    return { ok: true, text: clipboard.readText() };
+  });
+
+  ipcMain.handle("clipboard:writeText", (_event, ...args: unknown[]) => {
+    requireArgumentCount(args, 1, "clipboard:writeText");
+    const text = requireString(args[0], "clipboard:writeText");
+    clipboard.writeText(text);
+    return { ok: true };
   });
 }
 
+function writeStartedCurrent(
+  target: string,
+  body: string,
+  started: { dirtyRevision: number; documentEpoch: number },
+) {
+  // A dialog can outlive the document it was opened for. Do not write stale
+  // bytes (or apply stale BOM/EOL metadata) once New/Open changed identity.
+  if (documentEpoch !== started.documentEpoch) {
+    return {
+      ok: false,
+      blocked: true,
+      error: "Save refused: the document changed while save was pending",
+      dialogPath: dialogPathMark(),
+    };
+  }
+  const result = writeCurrent(target, body);
+  if (result.ok) {
+    // Any intervening report is conservatively dirty. The renderer knows the
+    // exact saved text and immediately reconciles this against its history;
+    // main must not create a transient clean window before that round trip.
+    current = {
+      ...current,
+      filePath: path.resolve(target),
+      dirty: dirtyRevision !== started.dirtyRevision,
+    };
+  }
+  return result;
+}
+
+// Keep the A0 write boundary focused on the actual write. The existing
+// failed-save drill mutates this function's catch branch and must continue to
+// exercise the production error path rather than silently measuring nothing.
 function writeCurrent(target: string, body: string) {
   try {
     writeDocument(target, serialiseDocument(body, current));
-    current = { ...current, filePath: path.resolve(target), dirty: false };
     return {
       ok: true, fileName: path.basename(target), dialogPath: dialogPathMark(),
     };

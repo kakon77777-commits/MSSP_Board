@@ -1,4 +1,5 @@
-// Generate dist/renderer/index.html from the template and the security contract.
+// Generate dist/renderer/index.html from the template and security contract,
+// and copy the same-origin stylesheet admitted by that contract.
 //
 //   node scripts/render-renderer.mjs           write it
 //   node scripts/render-renderer.mjs --check   exit 1 if what is on disk is stale
@@ -19,8 +20,10 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const app = path.join(here, "..");
 const TEMPLATE = path.join(app, "src", "renderer", "index.template.html");
+const STYLES = path.join(app, "src", "renderer", "styles.css");
 const SECURITY = path.join(app, "dist", "main", "security.js");
 const OUT = path.join(app, "dist", "renderer", "index.html");
+const STYLES_OUT = path.join(app, "dist", "renderer", "styles.css");
 const PLACEHOLDER = "__CSP__";
 
 async function render() {
@@ -52,26 +55,42 @@ const sha = (s) => crypto.createHash("sha256").update(s, "utf8").digest("hex");
 
 const check = process.argv.includes("--check");
 const wanted = await render();
+const wantedStyles = fs.readFileSync(STYLES, "utf8");
 
 if (check) {
   const found = fs.existsSync(OUT) ? fs.readFileSync(OUT, "utf8") : null;
-  if (found === wanted) {
+  const foundStyles = fs.existsSync(STYLES_OUT) ? fs.readFileSync(STYLES_OUT, "utf8") : null;
+  if (found === wanted && foundStyles === wantedStyles) {
     process.stdout.write(`  ok   dist/renderer/index.html is current (${sha(wanted).slice(0, 16)}…)\n`);
+    process.stdout.write(
+      `  ok   dist/renderer/styles.css is current (${sha(wantedStyles).slice(0, 16)}…)\n`);
     process.exit(0);
   }
-  process.stdout.write(
-    found === null
-      ? "  FAIL dist/renderer/index.html does not exist\n"
-      : `  FAIL dist/renderer/index.html is stale\n`
-        + `         on disk   ${sha(found).slice(0, 16)}…\n`
-        + `         generated ${sha(wanted).slice(0, 16)}…\n`);
+  if (found !== wanted) {
+    process.stdout.write(
+      found === null
+        ? "  FAIL dist/renderer/index.html does not exist\n"
+        : `  FAIL dist/renderer/index.html is stale\n`
+          + `         on disk   ${sha(found).slice(0, 16)}…\n`
+          + `         generated ${sha(wanted).slice(0, 16)}…\n`);
+  }
+  if (foundStyles !== wantedStyles) {
+    process.stdout.write(
+      foundStyles === null
+        ? "  FAIL dist/renderer/styles.css does not exist\n"
+        : `  FAIL dist/renderer/styles.css is stale\n`
+          + `         on disk   ${sha(foundStyles).slice(0, 16)}…\n`
+          + `         generated ${sha(wantedStyles).slice(0, 16)}…\n`);
+  }
   process.stdout.write("       run: npm run build\n");
   process.exit(1);
 }
 
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, wanted, "utf8");
+fs.writeFileSync(STYLES_OUT, wantedStyles, "utf8");
 process.stdout.write(`  wrote dist/renderer/index.html  (${sha(wanted).slice(0, 16)}…)\n`);
+process.stdout.write(`  wrote dist/renderer/styles.css (${sha(wantedStyles).slice(0, 16)}…)\n`);
 
 // ATTACK: each of these must make --check exit 1, and tests/drill-renderer.mjs
 // applies them to a throwaway copy:
