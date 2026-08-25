@@ -58,6 +58,49 @@ export function verify(root = ROOT) {
   check("no orphan acceptance rows", orphan.length === 0, orphan.join(", "));
   check("counts agree", caps.length === rows.length, `${caps.length} capabilities, ${rows.length} rows`);
 
+  // 2b. Every row must assert something of its own.
+  //
+  // capability_acceptance_rule says a row may not be cited by two capabilities
+  // "without an independent assertion". Until now this file only checked that
+  // the KEY SETS matched — so a row could be a bare pointer at workflow steps
+  // another capability already rests on, and the pair would pass while only one
+  // of them had stated what failure means.
+  //
+  // Found 2026-08-25 by the A1 implementer, from outside the project, reading
+  // the preregistration against the rule. `document-state` reads "steps 2 and
+  // 6" and `text-view-edit` reads "steps 2 and 6 - what is typed is what is
+  // shown": same evidence, and only the second says what it would mean for it
+  // to fail. A row that cannot fail on its own is decoration in the denominator.
+  //
+  // The test: strip the step citation and see whether anything is left.
+  // A bare step citation is NOT a violation on its own: `clipboard -> "step 4"`
+  // points at "select text, cut it, and paste it back", which is a concrete
+  // action that can fail, and no other capability rests on it. The first
+  // version of this check flagged all five bare citations and so reported four
+  // compliant rows as problems — a check that fails compliant cases gets
+  // switched off, which is worse than not having it. Same shape as a filter
+  // matching too much: over-matching produces noise that reads like findings.
+  //
+  // The violation is specifically: two capabilities resting on the SAME steps,
+  // where one of them adds nothing to distinguish itself.
+  const bareStepCitation = /^\s*steps?\s+\d+(\s*(,|and)\s*\d+)*\s*$/i;
+  const byStepSet = new Map();
+  for (const [cap, row] of Object.entries(d.capability_acceptance_map ?? {})) {
+    const steps = (String(row).match(/\b\d+\b/g) ?? []).sort().join(",");
+    if (!steps) continue;                       // attack rows cite no step
+    if (!byStepSet.has(steps)) byStepSet.set(steps, []);
+    byStepSet.get(steps).push([cap, String(row)]);
+  }
+  for (const [steps, sharing] of byStepSet) {
+    if (sharing.length < 2) continue;
+    for (const [cap, row] of sharing) {
+      const others = sharing.filter(([c]) => c !== cap).map(([c]) => c);
+      check(`${cap} is independently failable from ${others.join(", ")}`,
+        !bareStepCitation.test(row),
+        `both rest on step(s) ${steps} and this row adds nothing: "${row}"`);
+    }
+  }
+
   // 3-6. fixtures: the declared set, and every file's length and hash.
   const manifestPath = path.join(root, "fixtures", "MANIFEST.json");
   const manifest = fs.existsSync(manifestPath)
