@@ -17,6 +17,34 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const JSON_PATH = path.join(here, "preregistration.json");
 const README_PATH = path.join(here, "README.md");
+
+/**
+ * Render one revision_log row, in either of the two shapes the history contains.
+ *
+ * The v3 row introduced a second shape into a list this file read with one, so
+ * the built page carried two literal `undefined` lines — and BOTH this renderer's
+ * --check and the verifier exited 0. Two checks agreeing with each other is not
+ * two checks: neither validated the row schema at all, so they agreed about
+ * nothing.
+ *
+ * A row matching neither shape now RENDERS THE PROBLEM instead of printing
+ * `undefined`, because a page that reads as broken is better than a page that
+ * reads as complete and is not. The verifier fails closed on it separately.
+ */
+function renderRevision(r) {
+  if (typeof r?.finding === "string") {
+    return `**${r.finding}**${r.raised_by ? `（${r.raised_by} 提）` : ""}`
+      + `\n\n${r.change ?? "*(change missing)*"}${r.note ? `\n\n> ${r.note}` : ""}`;
+  }
+  if (typeof r?.revision === "string") {
+    const changes = Array.isArray(r.changes) ? r.changes : [];
+    return `**${r.revision}**${r.date ? `（${r.date}` : ""}${r.author ? `，${r.author}）` : r.date ? "）" : ""}`
+      + `\n\n${r.why ?? "*(why missing)*"}`
+      + (changes.length ? `\n\n${changes.map((c) => `- ${c}`).join("\n")}` : "");
+  }
+  return `**MALFORMED REVISION ROW** — matches neither declared schema:\n\n`
+    + `> keys: ${Object.keys(r ?? {}).join(", ") || "(none)"}`;
+}
 const raw = fs.readFileSync(JSON_PATH);
 const d = JSON.parse(raw.toString("utf8"));
 const sha = crypto.createHash("sha256").update(raw).digest("hex");
@@ -56,9 +84,9 @@ ${d.capability_acceptance_rule}
 |---|---|
 ${caps.map((c) => `| \`${c}\` | ${d.capability_acceptance_map[c]} |`).join("\n")}
 
-## v1 → v2 改了什麼
+## 修訂紀錄
 
-${d.revision_log.map((r) => `**${r.finding}**（${r.raised_by} 提）\n\n${r.change}${r.note ? `\n\n> ${r.note}` : ""}`).join("\n\n")}
+${d.revision_log.map(renderRevision).join("\n\n")}
 
 ## 技術與邊界
 

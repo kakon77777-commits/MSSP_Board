@@ -107,6 +107,41 @@ export function verify(root = ROOT) {
     }
   }
 
+  // 2c. Every revision_log row matches a DECLARED schema, with its required
+  // fields present.
+  //
+  // Added after v3 appended a row in a second shape and the generated README
+  // rendered two literal `undefined` lines — while both this verifier and
+  // render-readme's --check exited 0. They agreed with each other because
+  // NEITHER looked at the row schema; agreement between two checks that share a
+  // blind spot is not corroboration.
+  //
+  // The schemas live in the preregistration rather than here, so the renderer,
+  // this check and the drill read one declaration instead of three copies.
+  const schemas = d.revision_log_schemas;
+  check("revision_log_schemas is declared", schemas !== undefined
+    && Array.isArray(schemas?.legacy) && Array.isArray(schemas?.structured),
+    "the allowed row shapes must be declared, not assumed by each reader");
+  if (schemas) {
+    const allowed = { legacy: schemas.legacy, structured: schemas.structured };
+    (d.revision_log ?? []).forEach((row, i) => {
+      const keys = Object.keys(row ?? {});
+      // A row belongs to the schema whose discriminator it carries, so a row
+      // missing required fields fails as an INCOMPLETE row of a known shape
+      // rather than silently counting as "matches neither, therefore skip".
+      const kind = keys.includes("finding") ? "legacy"
+        : keys.includes("revision") ? "structured" : null;
+      if (kind === null) {
+        check(`revision_log[${i}] matches a declared schema`, false,
+          `keys: ${keys.join(", ") || "(none)"}`);
+        return;
+      }
+      const missing = allowed[kind].filter((f) => !(f in (row ?? {})));
+      check(`revision_log[${i}] (${kind}) has every required field`,
+        missing.length === 0, missing.length ? `missing: ${missing.join(", ")}` : "");
+    });
+  }
+
   // 3-6. fixtures: the declared set, and every file's length and hash.
   const manifestPath = path.join(root, "fixtures", "MANIFEST.json");
   const manifest = fs.existsSync(manifestPath)
