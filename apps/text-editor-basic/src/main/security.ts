@@ -9,7 +9,9 @@
 // Every value here is required by the preregistration's
 // `electron_security_boundary` section. Changing one without changing that
 // section turns the contract test red.
+import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 export interface WindowOptions {
   width: number;
@@ -62,16 +64,46 @@ export function contentSecurityPolicy(): string {
   ].join("; ");
 }
 
-/**
- * Only local packaged content may be navigated to. Returns false for every
- * remote origin, including localhost: the preregistration says acceptance runs
- * against the packaged executable and never a dev server, so permitting a dev
- * origin here would let the acceptance quietly test something else.
- */
-export function isNavigationAllowed(target: string): boolean {
+const SHIPPED_RENDERER_FILES: readonly string[] = Object.freeze([
+  "index.html",
+  "renderer.js",
+]);
+
+/** Only existing, declared files from the shipped renderer may be navigated to. */
+export function isNavigationAllowed(
+  target: string,
+  rendererRoot: string = path.join(__dirname, "..", "renderer"),
+): boolean {
   try {
     const url = new URL(target);
-    return url.protocol === "file:";
+    if (url.protocol !== "file:") return false;
+
+    const root = fs.realpathSync.native(rendererRoot);
+    if (!fs.statSync(root).isDirectory()) return false;
+
+    const candidate = fs.realpathSync.native(fileURLToPath(url));
+    if (!fs.statSync(candidate).isFile()) return false;
+
+    const relative = path.relative(root, candidate);
+    if (relative === "" || relative === ".." || relative.startsWith(`..${path.sep}`)
+      || path.isAbsolute(relative)) {
+      return false;
+    }
+
+    return SHIPPED_RENDERER_FILES.some((name) => {
+      const shippedPath = path.join(root, name);
+      try {
+        const shipped = fs.realpathSync.native(shippedPath);
+        const shippedRelative = path.relative(root, shipped);
+        if (shippedRelative === "" || shippedRelative === ".."
+          || shippedRelative.startsWith(`..${path.sep}`) || path.isAbsolute(shippedRelative)) {
+          return false;
+        }
+        return shipped === candidate && fs.statSync(shipped).isFile();
+      } catch {
+        return false;
+      }
+    });
   } catch {
     return false;
   }

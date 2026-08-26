@@ -22,7 +22,10 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const app = path.join(here, "..");
 const BUILT = path.join(app, "dist", "main", "security.js");
-const TEST = path.join(here, "security-boundary.test.mjs");
+const TESTS = [
+  path.join(here, "security-boundary.test.mjs"),
+  path.join(here, "navigation-boundary.test.mjs"),
+];
 
 const MUTATIONS = [
   { label: "nodeIntegration -> true", from: "nodeIntegration: false", to: "nodeIntegration: true" },
@@ -34,7 +37,14 @@ const MUTATIONS = [
   { label: "preload dropped", from: 'preload: node_path_1.default.join(preloadDir, "preload.js")', to: 'preload: ""' },
   { label: "CSP admits a remote origin", from: '"default-src \'self\'"', to: '"default-src \'self\' https://cdn.example.com"' },
   { label: "CSP permits eval", from: '"script-src \'self\'"', to: '"script-src \'self\' \'unsafe-eval\'"' },
-  { label: "navigation accepts a dev server", from: 'url.protocol === "file:"', to: 'url.protocol === "file:" || url.hostname === "127.0.0.1"' },
+  {
+    label: "navigation accepts a dev server",
+    from: 'if (url.protocol !== "file:")\n            return false;',
+    to: 'if (url.protocol === "http:" || url.protocol === "https:")\n'
+      + '            return true;\n'
+      + '        if (url.protocol !== "file:")\n'
+      + '            return false;',
+  },
   { label: "preload surface exposes ipcRenderer", from: '"appVersion",', to: '"appVersion", "ipcRenderer",' },
   { label: "CONTROL. change nothing", control: true, from: null, to: null },
 ];
@@ -78,7 +88,7 @@ export function run() {
       // proves the restore happened.
       fs.copyFileSync(BUILT, path.join(dir, "orig.js"));
       fs.copyFileSync(target, BUILT);
-      const r = spawnSync(process.execPath, ["--test", TEST], { cwd: app, encoding: "utf8" });
+      const r = spawnSync(process.execPath, ["--test", ...TESTS], { cwd: app, encoding: "utf8" });
       failures = ((r.stdout ?? "").match(/^✖ /gm) ?? []).length;
       fs.copyFileSync(path.join(dir, "orig.js"), BUILT);
     }

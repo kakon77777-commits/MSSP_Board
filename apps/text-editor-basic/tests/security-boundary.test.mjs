@@ -17,6 +17,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const BUILT = path.join(here, "..", "dist", "main", "security.js");
+const BUILT_RENDERER_ENTRY = path.join(here, "..", "dist", "renderer", "index.html");
 
 // The preregistration is the authority for what this contract must be, so the
 // test reads it rather than carrying its own copy of the policy.
@@ -83,7 +84,8 @@ test("navigation to any remote origin is refused", async () => {
   assert.equal(isNavigationAllowed("https://example.com/"), false);
   assert.equal(isNavigationAllowed("http://127.0.0.1:5173/"), false,
     "a dev server origin must be refused too - acceptance runs against the package");
-  assert.equal(isNavigationAllowed("file:///C:/app/dist/renderer/index.html"), true);
+  assert.equal(isNavigationAllowed(pathToFileURL(BUILT_RENDERER_ENTRY).href), true,
+    "the actual built renderer entry must remain navigable");
 });
 
 test("the preload surface is minimal and never exposes ipcRenderer", async () => {
