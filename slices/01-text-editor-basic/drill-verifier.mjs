@@ -144,6 +144,33 @@ const DRILLS = [
     },
   },
   {
+    // v3 appended a revision_log row in a second shape. The README rendered two
+    // literal `undefined` lines and BOTH the verifier and render-readme --check
+    // exited 0 — they agreed with each other while neither validated the row
+    // schema. These two drills exist so that agreement has to be earned.
+    label: "k. drop a required field from a structured revision row",
+    apply(dir) {
+      const p = path.join(dir, "preregistration.json");
+      const d = readJson(p);
+      const row = (d.revision_log ?? []).find((r) => typeof r?.revision === "string");
+      if (!row || !("why" in row)) return false;
+      delete row.why;
+      writeJson(p, d);
+      return true;
+    },
+  },
+  {
+    label: "l. append a revision row matching neither schema",
+    apply(dir) {
+      const p = path.join(dir, "preregistration.json");
+      const d = readJson(p);
+      if (!Array.isArray(d.revision_log)) return false;
+      d.revision_log.push({ summary: "looks reasonable, matches nothing" });
+      writeJson(p, d);
+      return true;
+    },
+  },
+  {
     label: "f. make the generated README stale",
     apply(dir) {
       const p = path.join(dir, "README.md");

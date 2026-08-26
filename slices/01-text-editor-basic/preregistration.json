@@ -202,7 +202,7 @@
     "kind": "design-only",
     "mssp_candidate": "FMS/SCL/SMS/TMS/DMS split with declared contracts and no sibling imports",
     "ordinary_alternative": "one module with a conventional component split, no capability registry, no declared contracts",
-    "same_dependencies": "the ordinary alternative is costed with the SAME Electron and CodeMirror versions, so a dependency choice is never misattributed to MSSP",
+    "same_dependencies": "the ordinary alternative is costed with the SAME Electron and editor-component versions, so a dependency choice is never misattributed to MSSP",
     "acceptance_equivalence": "same primary workflow acceptance",
     "causal_claim_allowed": false,
     "mssp_effect_verdict": "unknown by construction - only one arm is built"
@@ -215,15 +215,15 @@
     "on_falsification": "append a revision merging or moving it; do not keep a thin file to protect the shape"
   },
   "external_provider_contract": {
-    "rule": "CodeMirror supplies or influences document state, selection, history, clipboard and search. Using it is legitimate; crediting it to MSSP is not.",
+    "rule": "the editor component supplies or influences document state, selection, history, clipboard and search. Using it is legitimate; crediting it to MSSP is not.",
     "each_capability_must_carry": [
       "provider_kind (external_dependency | product_code)",
       "provider_artifact",
       "integration_contract",
       "product_owned_evidence"
     ],
-    "excluded_from_numerator": "Electron, CodeMirror and Playwright themselves never count toward any local or shared MSSP foundation",
-    "thin_wrapper_rule": "a TMS that is only a one-caller no-state wrapper over a CodeMirror API triggers module-splitting; naming it a capability does not make it an architectural result"
+    "excluded_from_numerator": "Electron, the editor component and Playwright themselves never count toward any local or shared MSSP foundation",
+    "thin_wrapper_rule": "a TMS that is only a one-caller no-state wrapper over an editor-component or browser API triggers module-splitting; naming it a capability does not make it an architectural result"
   },
   "electron_security_boundary": {
     "nodeIntegration": false,
@@ -303,9 +303,28 @@
   "how_this_slice_could_come_out_badly": [
     "the GUI cannot complete one of the nine domain capabilities without an internal call, and ui_complete fails",
     "the reopened file is not byte-identical and the external oracle rejects it",
-    "a capability turns out to be a thin CodeMirror wrapper, which is module-splitting done to myself",
+    "a capability turns out to be a thin editor-component wrapper, which is module-splitting done to myself",
     "the acceptance can only drive stubbed dialogs, so native-dialog coverage stays NotMeasured and must be reported as such",
     "a capability in capability_acceptance_map has no observable step that can actually fail, which would make the map decoration"
   ],
-  "stop_boundary": "No scaffold, no toolkit installation, no production code until Metron and Pragma accept this v2 and it returns to Neo's approval gate. Neo has delegated the design decision to the three AIs; the gate is that all three accept, not that I judge it ready."
+  "stop_boundary": "No A2 production until all of: a unified source baseline containing both the A1 head and the A0 boundary head; this preregistration green under its own fail-closed verifier with the append-only history intact; an exact workbench request derived from the three-architect-agreed core digest without broadening it; and Neo's explicit authorization to send that request. Three-architect agreement on the core is not by itself send authorization. This boundary grants no merge to main, no deployment, and no MSSP method adoption.",
+  "revision_log_schemas": {
+    "legacy": [
+      "finding",
+      "raised_by",
+      "change"
+    ],
+    "structured": [
+      "revision",
+      "date",
+      "author",
+      "why",
+      "changes"
+    ],
+    "optional": [
+      "note",
+      "accepted"
+    ],
+    "why": "Both shapes exist in the history. A row matching neither, or matching one with a required field missing, is a defect: it renders as literal `undefined` and no check noticed until a reader saw the built page."
+  }
 }

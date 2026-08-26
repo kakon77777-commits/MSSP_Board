@@ -5,7 +5,7 @@
 > `--check` 會在它過期時 exit 1。
 
 ```text
-  preregistration.json  sha256 a41290cd539a001866bae28e0fcaca06b27aa9d90e6efd0430562b61e8743a21
+  preregistration.json  sha256 c6167506300357b529910b47e7df1f4f95918793e2a28626197c4b7a3a872617
   v0 sha256 d08e59889dbe10fe6b5cdcacb81afefaef7baec6d63ec11ea2e375775ea67a6a  (preregistration.v0.json)
   v1 sha256 2ef304cd53eb31f729e620aa102055167f6ac4b922f6623ca52808fd1d8238ea  (preregistration.v1.json)
   v2 sha256 d1f78318a9399a788b92363f75673c9ec552f6058c4ff6e97f70210db4728fa1  (preregistration.v2.json)
@@ -52,7 +52,7 @@ Every capability maps to a DISTINCT failable row. No row may be cited by two cap
 | `new-saveas` | steps 2 and 3 |
 | `clipboard` | step 4 |
 
-## v1 → v2 改了什麼
+## 修訂紀錄
 
 **v1 kept settings-store by ADDING recent-files and window-geometry to the product workflow**（Metron 提）
 
@@ -82,9 +82,12 @@ entries now carry each party's own declaration reference; I still author only my
 
 target OS, runtime, package form, fixtures with hashes, EOL/BOM policy, timing policy and start/end events are all pinned below
 
-**undefined**（undefined 提）
+**v3**（2026-08-26，Elenchos）
 
-undefined
+Executes section 1.3.3 of the A2 MSSP core agreed 3/3 at sha256 8656A872133D826CF0E08B7AFAE3EFDBAC0A83F6CCB427F507F38B6681D2D05F. Both corrections were reported by the outsourced A1 implementer reading this file from outside; neither was found by the three architects.
+
+- stack.editor_component: 'CodeMirror (plain-text mode)' -> 'native textarea (plain-text)'. The stack entry was written before implementation and A1 measured a textarea carrying all four editing capabilities on Windows. Nothing checked implementation against stack, which is why the divergence survived three days.
+- capability_acceptance_map['document-state']: 'steps 2 and 6' -> the row now names an assertion that can fail while text-view-edit stays green. The old row rested on the same workflow steps as text-view-edit and asserted nothing of its own, so one piece of evidence was counted twice in an 11-capability denominator.
 
 ## 技術與邊界
 
@@ -93,7 +96,7 @@ undefined
 - **Playwright Electron 是 experimental**：official docs mark Electron automation experimental; the version used goes into the evidence, and if an upgrade breaks it that is reported as an integration failure rather than fixed by changing the acceptance
 - **對話框覆蓋**：自動化那條標 `dialog_path=stubbed`，原生 Open/Save As 另有一份 smoke，**前者永遠不能當成後者**。
 - **效能 = `NotMeasured`**。a second-count verdict without pinned CPU, RAM, storage and background load is false precision只記原始時間，hang detector 每個 GUI 動作 30s、整個流程上限 180s。
-- **外部套件不算 MSSP 地基**：Electron, CodeMirror and Playwright themselves never count toward any local or shared MSSP foundation。a TMS that is only a one-caller no-state wrapper over a CodeMirror API triggers module-splitting; naming it a capability does not make it an architectural result
+- **外部套件不算 MSSP 地基**：Electron, the editor component and Playwright themselves never count toward any local or shared MSSP foundation。a TMS that is only a one-caller no-state wrapper over an editor-component or browser API triggers module-splitting; naming it a capability does not make it an architectural result
 - **物理拓樸不預註冊**（`preregistered: false`）。假設是「each domain capability may become one TMS unit」，證偽條件：a unit with no state of its own, exactly one caller, and no ability to be exercised alone by the island test is evidence the hypothesis was wrong for that capability
 
 ## Fixtures（預先雜湊）
@@ -130,10 +133,10 @@ Each slice starts RED with contract and GUI tests before any production code. Th
 
 - the GUI cannot complete one of the nine domain capabilities without an internal call, and ui_complete fails
 - the reopened file is not byte-identical and the external oracle rejects it
-- a capability turns out to be a thin CodeMirror wrapper, which is module-splitting done to myself
+- a capability turns out to be a thin editor-component wrapper, which is module-splitting done to myself
 - the acceptance can only drive stubbed dialogs, so native-dialog coverage stays NotMeasured and must be reported as such
 - a capability in capability_acceptance_map has no observable step that can actually fail, which would make the map decoration
 
 ## 停止邊界
 
-**No scaffold, no toolkit installation, no production code until Metron and Pragma accept this v2 and it returns to Neo's approval gate. Neo has delegated the design decision to the three AIs; the gate is that all three accept, not that I judge it ready.**
+**No A2 production until all of: a unified source baseline containing both the A1 head and the A0 boundary head; this preregistration green under its own fail-closed verifier with the append-only history intact; an exact workbench request derived from the three-architect-agreed core digest without broadening it; and Neo's explicit authorization to send that request. Three-architect agreement on the core is not by itself send authorization. This boundary grants no merge to main, no deployment, and no MSSP method adoption.**
