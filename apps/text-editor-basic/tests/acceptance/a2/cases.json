@@ -1,0 +1,72 @@
+{
+  "schema": "mssp.a2-acceptance-cases/v1",
+  "core_sha256": "8656A872133D826CF0E08B7AFAE3EFDBAC0A83F6CCB427F507F38B6681D2D05F",
+  "source_baseline": "43617b2d42b9141d41a881fcc6d673b19b752102",
+  "owner": "Pragma",
+  "independence": "production author must not author or modify these cases",
+  "cases": [
+    {
+      "id": "A2-ENC-OPEN-LF",
+      "capability": "encoding-eol",
+      "subject": "main-authoritative LF format state and visible projection",
+      "positive": "small_lf opens through the GUI and reports UTF-8, No BOM, LF",
+      "attack": "visible text remains correct while format state or projection reports a non-LF value"
+    },
+    {
+      "id": "A2-ENC-OPEN-CRLF",
+      "capability": "encoding-eol",
+      "subject": "main-authoritative CRLF format state and visible projection",
+      "positive": "small_crlf opens through the GUI and reports CRLF",
+      "attack": "CRLF bytes are silently normalized or the projection reports LF"
+    },
+    {
+      "id": "A2-ENC-OPEN-BOM",
+      "capability": "encoding-eol",
+      "subject": "main-authoritative BOM state and visible projection",
+      "positive": "small_bom opens through the GUI and reports BOM present",
+      "attack": "BOM is removed, inserted, or projected from renderer re-detection"
+    },
+    {
+      "id": "A2-REFUSAL-NOT-UTF8",
+      "capability": "error-report",
+      "subject": "not_utf8 refusal identity and unchanged boundary",
+      "positive": "valid UTF-8 opens through the same main boundary",
+      "attack": "invalid-not-utf8 opens, loses its filename/code, mutates state, or writes disk"
+    },
+    {
+      "id": "A2-REFUSAL-UNREADABLE",
+      "capability": "error-report",
+      "subject": "unreadable refusal and unchanged boundary",
+      "positive": "a readable pinned file opens",
+      "attack": "read failure replaces current document or increments boundaryGeneration"
+    },
+    {
+      "id": "A2-REFUSAL-UNWRITABLE",
+      "capability": "error-report",
+      "subject": "unwritable refusal, dirty preservation, and unchanged boundaryGeneration",
+      "positive": "a writable scratch target saves",
+      "attack": "failed save clears dirty, advances generation, or claims success"
+    },
+    {
+      "id": "A2-REFUSAL-PATH-REJECTED",
+      "capability": "error-report",
+      "subject": "main-side path rejection before I/O",
+      "positive": "a normalized permitted path reaches the intended operation",
+      "attack": "renderer overrides rejection or I/O occurs before path_rejected"
+    },
+    {
+      "id": "A2-ENC-FAILURE-STATE-UNCHANGED",
+      "capability": "document-state",
+      "subject": "cancelled/refused snapshots preserve main authoritative state",
+      "positive": "accepted operation advances boundaryGeneration exactly once",
+      "attack": "cancelled/refused operation changes state, dirty, format, or generation"
+    },
+    {
+      "id": "A2-ENC-VISIBILITY-HANDSHAKE",
+      "capability": "encoding-eol",
+      "subject": "initial and post-operation DMS labels equal the main BoundarySnapshot",
+      "positive": "new/open/save snapshots render from getDocumentFormatState and operation results",
+      "attack": "renderer re-detects format, uses stale state, or invents a second DTO"
+    }
+  ]
+}
