@@ -3,7 +3,7 @@
   "app_id": "text-editor-basic",
   "wave": "group-1-foundation-discovery",
   "position_in_preregistered_sequence": 1,
-  "revision": "v3",
+  "revision": "v2",
   "supersedes": [
     {
       "version": "v0",
@@ -14,11 +14,6 @@
       "version": "v1",
       "sha256": "2ef304cd53eb31f729e620aa102055167f6ac4b922f6623ca52808fd1d8238ea",
       "kept_at": "preregistration.v1.json"
-    },
-    {
-      "version": "v2",
-      "sha256": "d1f78318a9399a788b92363f75673c9ec552f6058c4ff6e97f70210db4728fa1",
-      "kept_at": "preregistration.v2.json"
     }
   ],
   "revision_log": [
@@ -59,16 +54,6 @@
       "raised_by": "Metron and Pragma",
       "accepted": true,
       "change": "target OS, runtime, package form, fixtures with hashes, EOL/BOM policy, timing policy and start/end events are all pinned below"
-    },
-    {
-      "revision": "v3",
-      "date": "2026-08-26",
-      "author": "Elenchos",
-      "why": "Executes section 1.3.3 of the A2 MSSP core agreed 3/3 at sha256 8656A872133D826CF0E08B7AFAE3EFDBAC0A83F6CCB427F507F38B6681D2D05F. Both corrections were reported by the outsourced A1 implementer reading this file from outside; neither was found by the three architects.",
-      "changes": [
-        "stack.editor_component: 'CodeMirror (plain-text mode)' -> 'native textarea (plain-text)'. The stack entry was written before implementation and A1 measured a textarea carrying all four editing capabilities on Windows. Nothing checked implementation against stack, which is why the divergence survived three days.",
-        "capability_acceptance_map['document-state']: 'steps 2 and 6' -> the row now names an assertion that can fail while text-view-edit stays green. The old row rested on the same workflow steps as text-view-edit and asserted nothing of its own, so one piece of evidence was counted twice in an 11-capability denominator."
-      ]
     }
   ],
   "primary_user_interface": "GUI",
@@ -80,7 +65,7 @@
   "stack": {
     "runtime": "Electron",
     "language": "TypeScript",
-    "editor_component": "native textarea (plain-text)",
+    "editor_component": "CodeMirror (plain-text mode)",
     "gui_automation": "Playwright Electron API",
     "acceptance_runs_against": "the packaged executable, never a dev server",
     "playwright_electron_status": "official docs mark Electron automation experimental; the version used goes into the evidence, and if an upgrade breaks it that is reported as an integration failure rather than fixed by changing the acceptance"
@@ -120,7 +105,7 @@
     "ui-shell": "every workflow step is driven through it; a step needing an internal call fails ui_complete",
     "error-report": "attack: the invalid-not-utf8 fixture is refused BY NAME and the name reaches the GUI",
     "document-io": "steps 5 and 9 - reading and writing the user's document",
-    "document-state": "steps 2 and 6 - after edit, undo, redo and save, the visible dirty projection equals the main-process authoritative dirty state; this assertion can fail while typed text remains visible",
+    "document-state": "steps 2 and 6",
     "undo-redo": "step 7",
     "text-view-edit": "steps 2 and 6 - what is typed is what is shown",
     "find-replace": "step 8",
