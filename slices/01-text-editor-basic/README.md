@@ -1,13 +1,14 @@
-# slice 01 — text-editor-basic（預註冊 v2）
+# slice 01 — text-editor-basic（預註冊 v3）
 
 > **這個檔案是產生出來的。** 不要手改 —— 改 `preregistration.json` 然後跑
 > `node slices/01-text-editor-basic/render-readme.mjs`。
 > `--check` 會在它過期時 exit 1。
 
 ```text
-  preregistration.json  sha256 d1f78318a9399a788b92363f75673c9ec552f6058c4ff6e97f70210db4728fa1
+  preregistration.json  sha256 a41290cd539a001866bae28e0fcaca06b27aa9d90e6efd0430562b61e8743a21
   v0 sha256 d08e59889dbe10fe6b5cdcacb81afefaef7baec6d63ec11ea2e375775ea67a6a  (preregistration.v0.json)
   v1 sha256 2ef304cd53eb31f729e620aa102055167f6ac4b922f6623ca52808fd1d8238ea  (preregistration.v1.json)
+  v2 sha256 d1f78318a9399a788b92363f75673c9ec552f6058c4ff6e97f70210db4728fa1  (preregistration.v2.json)
 ```
 
 **這是預註冊，不是實作。** 目標平台 **Windows 11 x64**，其他 OS = `NotMeasured`。
@@ -42,7 +43,7 @@ Every capability maps to a DISTINCT failable row. No row may be cited by two cap
 | `ui-shell` | every workflow step is driven through it; a step needing an internal call fails ui_complete |
 | `error-report` | attack: the invalid-not-utf8 fixture is refused BY NAME and the name reaches the GUI |
 | `document-io` | steps 5 and 9 - reading and writing the user's document |
-| `document-state` | steps 2 and 6 |
+| `document-state` | steps 2 and 6 - after edit, undo, redo and save, the visible dirty projection equals the main-process authoritative dirty state; this assertion can fail while typed text remains visible |
 | `undo-redo` | step 7 |
 | `text-view-edit` | steps 2 and 6 - what is typed is what is shown |
 | `find-replace` | step 8 |
@@ -81,9 +82,13 @@ entries now carry each party's own declaration reference; I still author only my
 
 target OS, runtime, package form, fixtures with hashes, EOL/BOM policy, timing policy and start/end events are all pinned below
 
+**undefined**（undefined 提）
+
+undefined
+
 ## 技術與邊界
 
-- **Stack**：Electron + TypeScript + CodeMirror (plain-text mode)，GUI 自動化用 Playwright Electron API。
+- **Stack**：Electron + TypeScript + native textarea (plain-text)，GUI 自動化用 Playwright Electron API。
 - **驗收跑的是** the packaged executable, never a dev server。
 - **Playwright Electron 是 experimental**：official docs mark Electron automation experimental; the version used goes into the evidence, and if an upgrade breaks it that is reported as an integration failure rather than fixed by changing the acceptance
 - **對話框覆蓋**：自動化那條標 `dialog_path=stubbed`，原生 Open/Save As 另有一份 smoke，**前者永遠不能當成後者**。

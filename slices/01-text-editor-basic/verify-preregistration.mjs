@@ -95,9 +95,15 @@ export function verify(root = ROOT) {
     if (sharing.length < 2) continue;
     for (const [cap, row] of sharing) {
       const others = sharing.filter(([c]) => c !== cap).map(([c]) => c);
-      check(`${cap} is independently failable from ${others.join(", ")}`,
-        !bareStepCitation.test(row),
-        `both rest on step(s) ${steps} and this row adds nothing: "${row}"`);
+      const bare = bareStepCitation.test(row);
+      // The detail has to read correctly in BOTH directions. The first version
+      // printed "this row adds nothing" on the passing line too, so an `ok`
+      // asserted the opposite of what it had just verified — a verdict whose
+      // text contradicts its own outcome is worse than no text.
+      check(`${cap} is independently failable from ${others.join(", ")}`, !bare,
+        bare
+          ? `both rest on step(s) ${steps} and this row adds nothing: "${row}"`
+          : `shares step(s) ${steps} but asserts its own condition`);
     }
   }
 
