@@ -1,0 +1,18 @@
+{
+  "schema": "mssp.unit/v1",
+  "unit_id": "tms/utf8-document-codec-v1",
+  "role": "TMS",
+  "implements": [
+    "sms/DocumentFormatCodec"
+  ],
+  "allowed_imports": [
+    "sms/document-format-contract"
+  ],
+  "forbidden_roles": [
+    "dms",
+    "renderer",
+    "preload",
+    "main",
+    "other-tms"
+  ]
+}
