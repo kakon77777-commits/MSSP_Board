@@ -18,6 +18,10 @@ declare const saveDocument: ((text: string) => Promise<DocResult>) | undefined;
 declare const saveDocumentAs: ((text: string) => Promise<DocResult>) | undefined;
 declare const setDirty: ((dirty: boolean) => Promise<unknown>) | undefined;
 declare const readClipboardText: (() => Promise<ClipboardResult>) | undefined;
+// Supplied by the DMS bridge, which is a module and therefore deferred: this is
+// undefined while the classic scripts parse, exactly like the preload globals.
+declare const renderBoundary:
+  ((snapshot: unknown, refusal: unknown) => void) | undefined;
 declare const writeClipboardText: ((text: string) => Promise<ClipboardResult>) | undefined;
 
 interface DocResult {
@@ -27,6 +31,8 @@ interface DocResult {
   error?: string;
   cancelled?: boolean;
   dialogPath?: "stubbed" | "native";
+  /** What the main process measured. The renderer projects it and decides none of it. */
+  boundary?: unknown;
 }
 
 interface ClipboardResult {
@@ -254,6 +260,9 @@ async function run(
     }
     if (typeof result.text === "string" && doc) doc.value = result.text;
     if (nameSlot) nameSlot.textContent = result.fileName ?? "untitled";
+    if (typeof renderBoundary === "function" && result.boundary !== undefined) {
+      renderBoundary(result.boundary, null);
+    }
     await onSuccess(result);
   });
 }

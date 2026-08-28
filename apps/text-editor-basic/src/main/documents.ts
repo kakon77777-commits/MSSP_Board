@@ -5,7 +5,8 @@
 // is `electron_security_boundary`'s "filesystem: reachable only through a
 // minimal preload/contextBridge API".
 //
-// This file owns `encoding_policy` in full:
+// This file no longer implements `encoding_policy`; it OWNS the file loop and
+// delegates every byte-level decision to an injected codec:
 //
 //   read  UTF-8 only; anything else is refused BY NAME, never guessed
 //   bom   a UTF-8 BOM present on read is preserved on write
@@ -13,20 +14,26 @@
 //
 // Every one of those three is a property of the FILE, carried on the document
 // and written back, rather than a global setting. A global would silently
-// convert the second file you open to the first file's conventions.
+// convert the second file you open to the first file's conventions. What changed
+// is only WHERE they are decided: the codec measures the format and this module
+// carries it, unmodified, to whoever asked. There is exactly one implementation
+// of each rule, and it is not here.
 import fs from "node:fs";
 import path from "node:path";
 
-export type Eol = "lf" | "crlf";
+import type {
+  DecodedDocument, DocumentFormat, DocumentFormatCodec,
+} from "../sms/document-format-contract";
 
-export interface DocumentBytes {
-  /** Text as the user sees it, always with LF separators internally. */
-  text: string;
-  /** Whether the file on disk began with a UTF-8 BOM. */
-  bom: boolean;
-  /** The line endings the file on disk used. */
-  eol: Eol;
-}
+/**
+ * What a read hands up: the text, and the format the codec measured.
+ *
+ * This is the contract's own `DecodedDocument`. The shape it replaces carried a
+ * loose `bom: boolean` and `eol` beside the codec's `DocumentFormat` — two
+ * descriptions of one fact, and the loose pair had no room for `rawByteLength`,
+ * so a byte count the codec had already computed could never reach a caller.
+ */
+export type DocumentBytes = DecodedDocument;
 
 /** A refusal the user is meant to read, carrying the name of what was refused. */
 export class DocumentRefusal extends Error {
@@ -42,7 +49,26 @@ export class DocumentRefusal extends Error {
   }
 }
 
-const BOM = Buffer.from([0xEF, 0xBB, 0xBF]);
+let documentFormatCodec: DocumentFormatCodec | null = null;
+
+/** Install the codec this module reads and writes bytes through. */
+export function setDocumentFormatCodec(codec: DocumentFormatCodec): void {
+  documentFormatCodec = codec;
+}
+
+/**
+ * The installed codec, or a refusal naming what could not be acted on.
+ *
+ * Refusing here rather than falling back to a built-in decoder is deliberate: a
+ * fallback would be a second implementation of the encoding rules, and the
+ * reason this module has none is that a second one drifts from the first.
+ */
+function requireCodec(fileName: string | null): DocumentFormatCodec {
+  if (documentFormatCodec === null) {
+    throw new DocumentRefusal(fileName ?? "document", "cannot be handled: no codec is installed");
+  }
+  return documentFormatCodec;
+}
 
 /**
  * Resolve to an absolute, normalised path. Validation belongs here, in the main
@@ -65,10 +91,15 @@ export function normalisePath(candidate: string): string {
 /**
  * Read a document, or refuse it by name.
  *
- * Decoding uses TextDecoder with `fatal: true`. Buffer.toString("utf8") would
- * substitute U+FFFD for invalid bytes and return a string — the file would open,
- * visibly corrupted, and a later save would write the corruption back. Refusing
- * is the whole point of the policy; silently repairing is what it forbids.
+ * The bytes go to the injected codec, which decodes UTF-8 fatally: a lenient
+ * decode would substitute U+FFFD for invalid bytes and return a string — the
+ * file would open, visibly corrupted, and a later save would write the
+ * corruption back. Refusing is the whole point of the policy; silently repairing
+ * is what it forbids.
+ *
+ * The codec's `DecodedDocument` is returned exactly as measured. Rebuilding it
+ * here would put a second description of the format in the path, and the one
+ * this module invented would be the one callers saw.
  */
 export function readDocument(filePath: string): DocumentBytes {
   const resolved = normalisePath(filePath);
@@ -81,32 +112,25 @@ export function readDocument(filePath: string): DocumentBytes {
     throw new DocumentRefusal(name, `cannot be read (${(cause as NodeJS.ErrnoException).code})`);
   }
 
-  const bom = raw.subarray(0, 3).equals(BOM);
-  const body = bom ? raw.subarray(3) : raw;
-  const eol = body.includes(Buffer.from("\r\n")) ? "crlf" : "lf";
-
-  let text: string;
-  try {
-    text = new TextDecoder("utf-8", { fatal: true }).decode(body);
-  } catch {
+  const decoded = requireCodec(name).decode(raw, name);
+  if (!decoded.ok) {
     throw new DocumentRefusal(name, "is not valid UTF-8 and will not be opened");
   }
-
-  return { text: text.replace(/\r\n/g, "\n"), bom, eol };
+  return decoded.document;
 }
 
 /**
  * Turn an edited document back into the exact bytes to write.
  *
- * The BOM and EOL come from the document that was opened, not from a setting,
- * so a CRLF file stays CRLF and a BOM survives a round trip. A new document has
- * `eol: "lf"` and `bom: false` by policy.
+ * The format comes from the document that was opened, not from a setting, so a
+ * CRLF file stays CRLF and a BOM survives a round trip. A new document is
+ * `bom: "absent"`, `eol: "lf"` by policy.
+ *
+ * The codec's output IS the file's bytes. Nothing here adjusts, re-encodes or
+ * re-wraps them: doing so would be a second encoder competing with the first.
  */
-export function serialiseDocument(text: string, doc: Pick<DocumentBytes, "bom" | "eol">): Buffer {
-  const normalised = text.replace(/\r\n/g, "\n");
-  const withEol = doc.eol === "crlf" ? normalised.replace(/\n/g, "\r\n") : normalised;
-  const body = Buffer.from(withEol, "utf8");
-  return doc.bom ? Buffer.concat([BOM, body]) : body;
+export function serialiseDocument(text: string, format: DocumentFormat): Buffer {
+  return Buffer.from(requireCodec(null).encode(text, format));
 }
 
 /** Write a document atomically enough that a crash cannot leave a half file. */
@@ -123,7 +147,15 @@ export function writeDocument(filePath: string, bytes: Buffer): void {
   }
 }
 
-/** The state a brand-new document starts in. `eol: "lf"` is policy, not taste. */
+/**
+ * The state a brand-new document starts in. `eol: "lf"` is policy, not taste.
+ *
+ * `rawByteLength` is null rather than 0: nothing was read from disk, and 0 would
+ * state that an empty file had been measured.
+ */
 export function newDocument(): DocumentBytes {
-  return { text: "", bom: false, eol: "lf" };
+  return {
+    text: "",
+    format: { encoding: "utf-8", bom: "absent", eol: "lf", rawByteLength: null },
+  };
 }

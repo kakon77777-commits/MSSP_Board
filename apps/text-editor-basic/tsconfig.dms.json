@@ -1,0 +1,21 @@
+{
+  // The DMS projection is a real ES module: it exports renderBoundary and the
+  // browser loads it with <script type="module">. The rest of the renderer is
+  // deliberately written as classic scripts sharing globals, and the main
+  // process needs CommonJS, so this one file is emitted separately rather than
+  // by converting anything else. Emitting it as CommonJS produced a file that
+  // compiled, passed every island vector, and threw "exports is not defined"
+  // the moment the real window loaded it.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "outDir": "dist",
+    // rootDir is src, not src/dms: the projection imports the SMS contract,
+    // and tsc measures rootDir against every file it reads, type-only or not.
+    "rootDir": "src",
+    "lib": ["ES2022", "DOM"]
+  },
+  "include": ["src/dms/**/*.ts"]
+}

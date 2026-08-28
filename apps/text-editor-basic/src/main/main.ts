@@ -7,25 +7,47 @@
 import { app, BrowserWindow, clipboard, dialog, ipcMain, shell } from "electron";
 import path from "node:path";
 
+import { boundarySnapshot, outputFormat } from "./boundary-snapshot";
 import {
-  DocumentRefusal, newDocument, readDocument, serialiseDocument, writeDocument,
-  type Eol,
+  DocumentRefusal, newDocument, readDocument, serialiseDocument,
+  setDocumentFormatCodec, writeDocument,
 } from "./documents";
 import { isNavigationAllowed, windowOptions } from "./security";
+import { utf8DocumentCodec } from "../tms/encoding/utf8-document-codec";
+import type { BoundarySnapshot, DocumentFormat } from "../sms/document-format-contract";
 
-/** The one document this window holds. A0 is single-document by design. */
+/**
+ * The one document this window holds. A0 is single-document by design.
+ *
+ * `format` is the codec's own measurement, carried whole. The two loose fields
+ * it replaces described the same fact a second time and had nowhere to put the
+ * byte count, so the count could not reach the window that displays it.
+ */
 interface OpenDocument {
   filePath: string | null;
-  bom: boolean;
-  eol: Eol;
+  format: DocumentFormat;
   dirty: boolean;
 }
 
-let current: OpenDocument = { filePath: null, ...newDocument(), dirty: false };
+let current: OpenDocument = {
+  filePath: null, format: newDocument().format, dirty: false,
+};
 // Distinguish a newer edit report from the one a pending Save started with.
 // Native Save As can leave the main process awaiting a dialog while the
 // renderer continues to report edits; that later dirty state must survive the
 // older write completing.
+/**
+ * The boundary the window is entitled to show right now.
+ *
+ * Built from `current`, which was set from what the codec measured. Nothing here
+ * recomputes a format: a boundary that derived its own would be able to disagree
+ * with the file that was actually opened, and the window would show the
+ * disagreement as fact.
+ */
+function currentBoundary(): BoundarySnapshot {
+  return boundarySnapshot(current.format, current.filePath, current.dirty, documentEpoch);
+}
+
 let dirtyRevision = 0;
 let documentEpoch = 0;
 
@@ -94,9 +116,12 @@ function registerChannels(): void {
   ipcMain.handle("document:new", (_event, ...args: unknown[]) => {
     requireArgumentCount(args, 0, "document:new");
     if (current.dirty) return unsavedChangeRefusal("New");
-    current = { filePath: null, ...newDocument(), dirty: false };
+    current = { filePath: null, format: newDocument().format, dirty: false };
     documentEpoch += 1;
-    return { ok: true, text: "", fileName: null, dialogPath: dialogPathMark() };
+    return {
+      ok: true, text: "", fileName: null, dialogPath: dialogPathMark(),
+      boundary: currentBoundary(),
+    };
   });
 
   ipcMain.handle("document:open", async (event, ...args: unknown[]) => {
@@ -123,11 +148,11 @@ function registerChannels(): void {
     }
     try {
       const doc = readDocument(chosen);
-      current = { filePath: path.resolve(chosen), bom: doc.bom, eol: doc.eol, dirty: false };
+      current = { filePath: path.resolve(chosen), format: doc.format, dirty: false };
       documentEpoch += 1;
       return {
         ok: true, text: doc.text, fileName: path.basename(chosen),
-        dialogPath: dialogPathMark(),
+        dialogPath: dialogPathMark(), boundary: currentBoundary(),
       };
     } catch (raised) {
       // The refusal reaches the GUI carrying the file's name, because
@@ -226,9 +251,10 @@ function writeStartedCurrent(
 // exercise the production error path rather than silently measuring nothing.
 function writeCurrent(target: string, body: string) {
   try {
-    writeDocument(target, serialiseDocument(body, current));
+    writeDocument(target, serialiseDocument(body, outputFormat(current.format)));
     return {
       ok: true, fileName: path.basename(target), dialogPath: dialogPathMark(),
+      boundary: currentBoundary(),
     };
   } catch (raised) {
     return {
@@ -278,6 +304,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  setDocumentFormatCodec(utf8DocumentCodec);
   registerChannels();
   createWindow();
   app.on("activate", () => {

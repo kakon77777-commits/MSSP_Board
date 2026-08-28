@@ -5,7 +5,7 @@
   "description": "MSSP product-scale trial, app 1. Preregistration: slices/01-text-editor-basic/preregistration.json",
   "main": "dist/main/main.js",
   "scripts": {
-    "build": "tsc -p tsconfig.json && node scripts/render-renderer.mjs",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.dms.json && node scripts/render-renderer.mjs",
     "start": "electron .",
     "test": "node --test tests/*.test.mjs",
     "build:check": "node scripts/render-renderer.mjs --check"

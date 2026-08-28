@@ -38,6 +38,16 @@
       <button id="replace" type="button">Replace</button>
       <span id="find-status" role="status" aria-live="polite"></span>
       <span id="dirty" data-dirty="false"><span id="name">untitled</span></span>
+      <!-- The encoding row. A2 requires the format a file was read with to be
+           VISIBLE, not merely preserved: a BOM that survives a round trip while
+           nobody can see it is indistinguishable, to the user, from one that was
+           silently dropped. Every value here is written by the projection from a
+           snapshot the main process measured; the renderer computes none of them. -->
+      <span id="encoding">-</span>
+      <span id="bom">-</span>
+      <span id="eol">-</span>
+      <span id="bytes">-</span>
+      <span id="generation">-</span>
       <span id="status" data-busy="false">Electron <span id="version">unknown</span></span>
     </div>
     <!-- Announced politely so a refusal reaches a screen reader as well as the
@@ -47,5 +57,9 @@
     <textarea id="document" spellcheck="false" aria-label="Document"></textarea>
     <script src="./editing-model.js"></script>
     <script src="./renderer.js"></script>
+    <!-- A module, unlike the two above: the projection is a real ES module and
+         is deferred by definition, which is why renderer.js treats it as
+         possibly-undefined the same way it treats the preload globals. -->
+    <script type="module" src="../dms/encoding-visibility-bridge.js"></script>
   </body>
 </html>
