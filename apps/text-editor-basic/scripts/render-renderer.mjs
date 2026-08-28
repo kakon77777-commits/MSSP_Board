@@ -19,6 +19,28 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const app = path.join(here, "..");
+// A compiled .js under src/ is always a build accident: every emit goes to dist.
+// One appeared when a tsconfig's rootDir excluded a file it still read, and tsc
+// wrote that file's output beside its source. It was one `export {};` line and
+// nothing failed -- which is why it has a check rather than a convention.
+function checkNoEmittedSourcesUnderSrc() {
+  const strays = [];
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name.endsWith(".js")) strays.push(path.relative(app, full));
+    }
+  };
+  walk(path.join(app, "src"));
+  if (strays.length > 0) {
+    console.error("  FAIL compiled JavaScript found under src/: " + strays.join(", "));
+    return false;
+  }
+  console.log("  ok   no compiled JavaScript under src/");
+  return true;
+}
+
 const TEMPLATE = path.join(app, "src", "renderer", "index.template.html");
 const STYLES = path.join(app, "src", "renderer", "styles.css");
 const SECURITY = path.join(app, "dist", "main", "security.js");
@@ -58,9 +80,10 @@ const wanted = await render();
 const wantedStyles = fs.readFileSync(STYLES, "utf8");
 
 if (check) {
+  const sourcesClean = checkNoEmittedSourcesUnderSrc();
   const found = fs.existsSync(OUT) ? fs.readFileSync(OUT, "utf8") : null;
   const foundStyles = fs.existsSync(STYLES_OUT) ? fs.readFileSync(STYLES_OUT, "utf8") : null;
-  if (found === wanted && foundStyles === wantedStyles) {
+  if (sourcesClean && found === wanted && foundStyles === wantedStyles) {
     process.stdout.write(`  ok   dist/renderer/index.html is current (${sha(wanted).slice(0, 16)}…)\n`);
     process.stdout.write(
       `  ok   dist/renderer/styles.css is current (${sha(wantedStyles).slice(0, 16)}…)\n`);
