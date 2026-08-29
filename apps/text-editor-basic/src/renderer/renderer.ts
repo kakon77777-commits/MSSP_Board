@@ -21,19 +21,38 @@ declare const readClipboardText: (() => Promise<ClipboardResult>) | undefined;
 // Supplied by the DMS bridge, which is a module and therefore deferred: this is
 // undefined while the classic scripts parse, exactly like the preload globals.
 declare const renderBoundary:
-  ((snapshot: unknown, refusal: unknown) => void) | undefined;
+  ((snapshot: BoundaryRecord | null, refusal: RefusalRecord | null) => void) | undefined;
 declare const writeClipboardText: ((text: string) => Promise<ClipboardResult>) | undefined;
 
-interface DocResult {
-  ok: boolean;
-  text?: string;
-  fileName?: string | null;
-  error?: string;
-  cancelled?: boolean;
-  dialogPath?: "stubbed" | "native";
-  /** What the main process measured. The renderer projects it and decides none of it. */
-  boundary?: unknown;
+interface RefusalRecord {
+  code: string;
+  fileName: string | null;
+  message: string;
 }
+
+interface BoundaryRecord {
+  fileName: string | null;
+  format: { encoding: string; bom: string; eol: string; rawByteLength: number | null;
+            schema: string };
+  dirty: boolean;
+  boundaryGeneration: number;
+}
+
+/**
+ * What every document operation returns.
+ *
+ * Three distinct statuses, not one `ok: false` read through optional fields.
+ * `cancelled` means the user withdrew; `refused` means the app declined and owes
+ * a reason. Both carry the boundary unchanged, so the renderer can show that the
+ * document did not move rather than leaving the last state on screen and hoping.
+ */
+type DocResult =
+  | { status: "accepted"; operation: string; text?: string;
+      boundary: BoundaryRecord; dialogPath: "stubbed" | "native" }
+  | { status: "cancelled"; operation: string;
+      boundary: BoundaryRecord; dialogPath: "stubbed" | "native" }
+  | { status: "refused"; operation: string; refusal: RefusalRecord;
+      boundary: BoundaryRecord; dialogPath: "stubbed" | "native" };
 
 interface ClipboardResult {
   ok: boolean;
@@ -252,19 +271,27 @@ async function run(
     // IPC reply. Save benefits from the same ordering and uses this path too.
     await drainDirtyQueue();
     const result = await operation();
-    if (result.dialogPath) statusSlot?.setAttribute("data-dialog-path", result.dialogPath);
-    if (result.cancelled) return;
-    if (!result.ok) {
-      showError(result.error ?? "the operation failed");
+    statusSlot?.setAttribute("data-dialog-path", result.dialogPath);
+    // Every status projects its boundary, including the two that changed
+    // nothing: showing the unchanged one is how a refusal proves the document
+    // stayed put, where leaving the last render on screen only looks the same.
+    project(result.boundary, result.status === "refused" ? result.refusal : null);
+    if (result.status === "cancelled") return;
+    if (result.status === "refused") {
+      // The projection above already wrote the message: #error belongs to it, and
+      // a second writer here would be the same claim in two places, agreeing only
+      // until one of them changed its rule.
       return;
     }
     if (typeof result.text === "string" && doc) doc.value = result.text;
-    if (nameSlot) nameSlot.textContent = result.fileName ?? "untitled";
-    if (typeof renderBoundary === "function" && result.boundary !== undefined) {
-      renderBoundary(result.boundary, null);
-    }
+    if (nameSlot) nameSlot.textContent = result.boundary.fileName ?? "untitled";
     await onSuccess(result);
   });
+}
+
+/** Hand the boundary to the DMS projection, if the deferred module has arrived. */
+function project(boundary: BoundaryRecord | null, refusal: RefusalRecord | null): void {
+  if (typeof renderBoundary === "function") renderBoundary(boundary, refusal);
 }
 
 async function runEdit(operation: () => Promise<void>): Promise<void> {

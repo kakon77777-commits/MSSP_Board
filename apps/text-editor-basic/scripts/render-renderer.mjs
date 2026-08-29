@@ -12,8 +12,10 @@
 // copies of the same claim — two in a docstring, one on an error path. The cure
 // is not "remember to sync"; it is making the second copy impossible to write
 // by hand, and turning the check red when the generated file falls behind.
+import { execFileSync } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -39,6 +41,49 @@ function checkNoEmittedSourcesUnderSrc() {
   }
   console.log("  ok   no compiled JavaScript under src/");
   return true;
+}
+
+// The DMS projection ships as its own ES module, emitted by its own tsconfig, and
+// nothing else on the page can vouch for it. Checking that the file EXISTS would
+// pass for a file whose body had been replaced, so the check recompiles the
+// module to a scratch directory and compares bytes: the only thing that proves
+// dist/dms is what src/dms actually says.
+function checkDmsArtifactsAreCurrent() {
+  const emitted = path.join(app, "dist", "dms");
+  if (!fs.existsSync(emitted)) {
+    console.error("  FAIL dist/dms does not exist; run: npm run build");
+    return false;
+  }
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "dms-check-"));
+  try {
+    execFileSync(
+      process.execPath,
+      [path.join(app, "node_modules", "typescript", "bin", "tsc"),
+       "-p", path.join(app, "tsconfig.dms.json"), "--outDir", scratch],
+      { cwd: app, stdio: "pipe" });
+    const rebuilt = path.join(scratch, "dms");
+    const names = new Set([...fs.readdirSync(emitted), ...fs.readdirSync(rebuilt)]);
+    const differing = [];
+    for (const name of names) {
+      const a = path.join(emitted, name);
+      const b = path.join(rebuilt, name);
+      const left = fs.existsSync(a) ? fs.readFileSync(a) : null;
+      const right = fs.existsSync(b) ? fs.readFileSync(b) : null;
+      if (left === null || right === null || !left.equals(right)) differing.push(name);
+    }
+    if (differing.length > 0) {
+      console.error("  FAIL dist/dms does not match src/dms: " + differing.join(", "));
+      return false;
+    }
+    console.log("  ok   dist/dms matches a fresh compile of src/dms");
+    return true;
+  } catch (error) {
+    const reason = String(error.stderr ?? error.message).trim().slice(0, 90);
+    console.error("  FAIL dist/dms could not be verified: " + reason);
+    return false;
+  } finally {
+    fs.rmSync(scratch, { recursive: true, force: true });
+  }
 }
 
 const TEMPLATE = path.join(app, "src", "renderer", "index.template.html");
@@ -81,9 +126,10 @@ const wantedStyles = fs.readFileSync(STYLES, "utf8");
 
 if (check) {
   const sourcesClean = checkNoEmittedSourcesUnderSrc();
+  const dmsCurrent = checkDmsArtifactsAreCurrent();
   const found = fs.existsSync(OUT) ? fs.readFileSync(OUT, "utf8") : null;
   const foundStyles = fs.existsSync(STYLES_OUT) ? fs.readFileSync(STYLES_OUT, "utf8") : null;
-  if (sourcesClean && found === wanted && foundStyles === wantedStyles) {
+  if (sourcesClean && dmsCurrent && found === wanted && foundStyles === wantedStyles) {
     process.stdout.write(`  ok   dist/renderer/index.html is current (${sha(wanted).slice(0, 16)}…)\n`);
     process.stdout.write(
       `  ok   dist/renderer/styles.css is current (${sha(wantedStyles).slice(0, 16)}…)\n`);

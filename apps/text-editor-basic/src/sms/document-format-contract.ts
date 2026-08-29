@@ -32,3 +32,34 @@ export interface BoundarySnapshot {
   dirty: boolean;
   boundaryGeneration: number;
 }
+
+/**
+ * What every document operation returns across the process boundary.
+ *
+ * `cancelled` and `refused` are separate variants rather than one `ok: false`
+ * with optional fields: a reader that has to guess which one it holds will
+ * eventually guess wrong, and the two mean opposite things about whether the
+ * user asked for something that failed. Both carry the UNCHANGED boundary, so a
+ * caller can prove the current document did not move.
+ */
+export type DocumentOperationResult =
+  | {
+      status: "accepted";
+      operation: DocumentOperation;
+      text?: string;
+      boundary: BoundarySnapshot;
+      dialogPath: "stubbed" | "native";
+    }
+  | {
+      status: "cancelled";
+      operation: DocumentOperation;
+      boundary: BoundarySnapshot;
+      dialogPath: "stubbed" | "native";
+    }
+  | {
+      status: "refused";
+      operation: DocumentOperation;
+      refusal: DocumentRefusal;
+      boundary: BoundarySnapshot;
+      dialogPath: "stubbed" | "native";
+    };

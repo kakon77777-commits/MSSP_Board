@@ -14,7 +14,10 @@ import {
 } from "./documents";
 import { isNavigationAllowed, windowOptions } from "./security";
 import { utf8DocumentCodec } from "../tms/encoding/utf8-document-codec";
-import type { BoundarySnapshot, DocumentFormat } from "../sms/document-format-contract";
+import type {
+  BoundarySnapshot, DocumentFormat, DocumentOperation, DocumentOperationResult,
+  DocumentRefusal as RefusalRecord, DocumentRefusalCode,
+} from "../sms/document-format-contract";
 
 /**
  * The one document this window holds. A0 is single-document by design.
@@ -45,8 +48,18 @@ let current: OpenDocument = {
  * disagreement as fact.
  */
 function currentBoundary(): BoundarySnapshot {
-  return boundarySnapshot(current.format, current.filePath, current.dirty, documentEpoch);
+  return boundarySnapshot(current.format, current.filePath, current.dirty, boundaryGeneration);
 }
+
+/**
+ * How many boundaries this window has published.
+ *
+ * Deliberately separate from `documentEpoch`. That one means "the document
+ * identity changed" and a pending dialog refuses on it; a Save does not change
+ * identity but does publish a boundary, so sharing one counter would make every
+ * save cancel an in-flight Open for a reason that never happened.
+ */
+let boundaryGeneration = 0;
 
 let dirtyRevision = 0;
 let documentEpoch = 0;
@@ -101,13 +114,61 @@ function requireArgumentCount(args: unknown[], expected: number, channel: string
   throw new DocumentRefusal(channel, shape);
 }
 
-/** Refuse a destructive document transition without changing current state. */
-function unsavedChangeRefusal(operation: "New" | "Open") {
-  return {
-    ok: false,
-    blocked: true,
-    error: `${operation} refused: save the current document before replacing unsaved changes`,
+/**
+ * The three results a document operation can have.
+ *
+ * `cancelled` and `refused` are distinct variants rather than one `ok: false`
+ * with optional fields, because a reader that has to guess which one it holds
+ * will eventually guess wrong, and they mean opposite things about whether the
+ * user asked for something that then failed.
+ *
+ * Both carry the boundary UNCHANGED, and neither advances the generation. That
+ * is what lets a caller prove the current document did not move: an unchanged
+ * generation is evidence, where an absent field would only be silence.
+ */
+function accepted(
+  operation: DocumentOperation, text?: string,
+): DocumentOperationResult {
+  boundaryGeneration += 1;
+  const result: DocumentOperationResult = {
+    status: "accepted", operation, boundary: currentBoundary(), dialogPath: dialogPathMark(),
   };
+  return text === undefined ? result : { ...result, text };
+}
+
+function cancelled(operation: DocumentOperation): DocumentOperationResult {
+  return {
+    status: "cancelled", operation, boundary: currentBoundary(), dialogPath: dialogPathMark(),
+  };
+}
+
+function refused(
+  operation: DocumentOperation, refusal: RefusalRecord,
+): DocumentOperationResult {
+  return {
+    status: "refused", operation, refusal,
+    boundary: currentBoundary(), dialogPath: dialogPathMark(),
+  };
+}
+
+/** Carry a thrown refusal across the boundary with its own code, not a guessed one. */
+function refusalRecord(
+  raised: unknown, fallbackName: string | null, fallbackCode: DocumentRefusalCode,
+): RefusalRecord {
+  if (raised instanceof DocumentRefusal) {
+    return { code: raised.code, fileName: raised.fileName, message: raised.message };
+  }
+  return { code: fallbackCode, fileName: fallbackName, message: String(raised) };
+}
+
+/** Refuse a destructive document transition without changing current state. */
+function unsavedChangeRefusal(operation: DocumentOperation): DocumentOperationResult {
+  const label = operation === "new" ? "New" : "Open";
+  return refused(operation, {
+    code: "dirty_transition_blocked",
+    fileName: current.filePath === null ? null : path.basename(current.filePath),
+    message: `${label} refused: save the current document before replacing unsaved changes`,
+  });
 }
 
 function registerChannels(): void {
@@ -115,54 +176,43 @@ function registerChannels(): void {
   // in the preload would run on the side that can be compromised.
   ipcMain.handle("document:new", (_event, ...args: unknown[]) => {
     requireArgumentCount(args, 0, "document:new");
-    if (current.dirty) return unsavedChangeRefusal("New");
+    if (current.dirty) return unsavedChangeRefusal("new");
     current = { filePath: null, format: newDocument().format, dirty: false };
     documentEpoch += 1;
-    return {
-      ok: true, text: "", fileName: null, dialogPath: dialogPathMark(),
-      boundary: currentBoundary(),
-    };
+    return accepted("new", "");
   });
 
   ipcMain.handle("document:open", async (event, ...args: unknown[]) => {
     requireArgumentCount(args, 0, "document:open");
     const win = BrowserWindow.fromWebContents(event.sender);
-    if (!win) return { ok: false, error: "no window" };
+    if (!win) return noWindow("open");
     const startedDirtyRevision = dirtyRevision;
-    if (current.dirty) return unsavedChangeRefusal("Open");
+    if (current.dirty) return unsavedChangeRefusal("open");
     const startedEpoch = documentEpoch;
     const chosen = await choosePath(win, "open");
-    if (chosen === null) return { ok: false, cancelled: true, dialogPath: dialogPathMark() };
+    if (chosen === null) return cancelled("open");
     if (documentEpoch !== startedEpoch) {
-      return {
-        ok: false,
-        blocked: true,
-        error: "Open refused: the document changed while open was pending",
-        dialogPath: dialogPathMark(),
-      };
+      return refused("open", {
+        code: "stale_document",
+        fileName: null,
+        message: "Open refused: the document changed while open was pending",
+      });
     }
     // A native dialog yields the event loop. Refuse if an edit arrived while it
     // was open instead of replacing content that was clean only at click time.
     if (dirtyRevision !== startedDirtyRevision && current.dirty) {
-      return unsavedChangeRefusal("Open");
+      return unsavedChangeRefusal("open");
     }
     try {
       const doc = readDocument(chosen);
       current = { filePath: path.resolve(chosen), format: doc.format, dirty: false };
       documentEpoch += 1;
-      return {
-        ok: true, text: doc.text, fileName: path.basename(chosen),
-        dialogPath: dialogPathMark(), boundary: currentBoundary(),
-      };
+      return accepted("open", doc.text);
     } catch (raised) {
       // The refusal reaches the GUI carrying the file's name, because
       // error-report's acceptance row is "refused BY NAME and the name reaches
       // the GUI" — a refusal that only reaches a log is not that.
-      return {
-        ok: false,
-        error: raised instanceof DocumentRefusal ? raised.message : String(raised),
-        dialogPath: dialogPathMark(),
-      };
+      return refused("open", refusalRecord(raised, path.basename(chosen), "unreadable"));
     }
   });
 
@@ -171,13 +221,13 @@ function registerChannels(): void {
     const body = requireString(args[0], "document:save");
     const started = { dirtyRevision, documentEpoch };
     const win = BrowserWindow.fromWebContents(event.sender);
-    if (!win) return { ok: false, error: "no window" };
+    if (!win) return noWindow("save");
     let target = current.filePath;
     if (target === null) {
       target = await choosePath(win, "save");
-      if (target === null) return { ok: false, cancelled: true, dialogPath: dialogPathMark() };
+      if (target === null) return cancelled("save");
     }
-    return writeStartedCurrent(target, body, started);
+    return writeStartedCurrent("save", target, body, started);
   });
 
   ipcMain.handle("document:saveAs", async (event, ...args: unknown[]) => {
@@ -185,10 +235,10 @@ function registerChannels(): void {
     const body = requireString(args[0], "document:saveAs");
     const started = { dirtyRevision, documentEpoch };
     const win = BrowserWindow.fromWebContents(event.sender);
-    if (!win) return { ok: false, error: "no window" };
+    if (!win) return noWindow("save-as");
     const target = await choosePath(win, "save");
-    if (target === null) return { ok: false, cancelled: true, dialogPath: dialogPathMark() };
-    return writeStartedCurrent(target, body, started);
+    if (target === null) return cancelled("save-as");
+    return writeStartedCurrent("save-as", target, body, started);
   });
 
   // The renderer reports edits; main holds the flag, because main is what
@@ -199,6 +249,13 @@ function registerChannels(): void {
     current.dirty = requireBoolean(args[0], "document:setDirty");
     dirtyRevision += 1;
     return { ok: true, dirty: current.dirty };
+  });
+
+  // Core 4.2: the renderer asks once on load and never derives a format itself.
+  // A named channel with no selector argument, like every other operation here.
+  ipcMain.handle("document:get-format-state", (_event, ...args: unknown[]) => {
+    requireArgumentCount(args, 0, "document:get-format-state");
+    return currentBoundary();
   });
 
   // Clipboard is an external boundary, but Electron's text API has already
@@ -218,50 +275,57 @@ function registerChannels(): void {
 }
 
 function writeStartedCurrent(
+  operation: DocumentOperation,
   target: string,
   body: string,
   started: { dirtyRevision: number; documentEpoch: number },
-) {
+): DocumentOperationResult {
   // A dialog can outlive the document it was opened for. Do not write stale
   // bytes (or apply stale BOM/EOL metadata) once New/Open changed identity.
   if (documentEpoch !== started.documentEpoch) {
-    return {
-      ok: false,
-      blocked: true,
-      error: "Save refused: the document changed while save was pending",
-      dialogPath: dialogPathMark(),
-    };
+    return refused(operation, {
+      code: "stale_document",
+      fileName: path.basename(target),
+      message: "Save refused: the document changed while save was pending",
+    });
   }
-  const result = writeCurrent(target, body);
-  if (result.ok) {
-    // Any intervening report is conservatively dirty. The renderer knows the
-    // exact saved text and immediately reconciles this against its history;
-    // main must not create a transient clean window before that round trip.
-    current = {
-      ...current,
-      filePath: path.resolve(target),
-      dirty: dirtyRevision !== started.dirtyRevision,
-    };
+  const written = writeCurrent(target, body);
+  if (written.refusal !== null) {
+    // `unwritable` must leave the document dirty. Nothing below runs, so the
+    // boundary this returns is the one that was already true.
+    return refused(operation, written.refusal);
   }
-  return result;
+  // The state is updated BEFORE the boundary is built. Building it first
+  // published the identity the document had a moment ago: a packaged Save As
+  // reported the previous name and generation while the bytes were already on
+  // disk under the new one.
+  //
+  // Any intervening report is conservatively dirty. The renderer knows the
+  // exact saved text and immediately reconciles this against its history; main
+  // must not create a transient clean window before that round trip.
+  current = {
+    ...current,
+    filePath: path.resolve(target),
+    dirty: dirtyRevision !== started.dirtyRevision,
+  };
+  return accepted(operation);
+}
+
+function noWindow(operation: DocumentOperation): DocumentOperationResult {
+  return refused(operation, {
+    code: "no_window", fileName: null, message: "no window",
+  });
 }
 
 // Keep the A0 write boundary focused on the actual write. The existing
 // failed-save drill mutates this function's catch branch and must continue to
 // exercise the production error path rather than silently measuring nothing.
-function writeCurrent(target: string, body: string) {
+function writeCurrent(target: string, body: string): { refusal: RefusalRecord | null } {
   try {
     writeDocument(target, serialiseDocument(body, outputFormat(current.format)));
-    return {
-      ok: true, fileName: path.basename(target), dialogPath: dialogPathMark(),
-      boundary: currentBoundary(),
-    };
+    return { refusal: null };
   } catch (raised) {
-    return {
-      ok: false,
-      error: raised instanceof DocumentRefusal ? raised.message : String(raised),
-      dialogPath: dialogPathMark(),
-    };
+    return { refusal: refusalRecord(raised, path.basename(target), "unwritable") };
   }
 }
 

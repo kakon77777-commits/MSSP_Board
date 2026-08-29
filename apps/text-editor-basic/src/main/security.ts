@@ -125,6 +125,10 @@ export const PRELOAD_API_SURFACE: readonly string[] = Object.freeze([
   "saveDocumentAs",
   "newDocument",
   "setDirty",
+  // A2's initial handshake. The renderer asks for the boundary once on load
+  // rather than deriving a format of its own; core 4.2 fixes both the name and
+  // the channel, so neither side can drift into a second one.
+  "getDocumentFormatState",
   // A1 clipboard boundary. The renderer receives two operations, not a
   // channel-selecting function and never the raw ipcRenderer object.
   "readClipboardText",

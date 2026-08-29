@@ -22,7 +22,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import type {
-  DecodedDocument, DocumentFormat, DocumentFormatCodec,
+  DecodedDocument, DocumentFormat, DocumentFormatCodec, DocumentRefusalCode,
 } from "../sms/document-format-contract";
 
 /**
@@ -35,17 +35,26 @@ import type {
  */
 export type DocumentBytes = DecodedDocument;
 
-/** A refusal the user is meant to read, carrying the name of what was refused. */
+/**
+ * A refusal the user is meant to read, carrying the name of what was refused.
+ *
+ * The `code` exists because the cross-process contract carries a typed refusal.
+ * Deriving one at the boundary by matching on message text would put the
+ * classification in the place furthest from the decision, and every reworded
+ * message would silently reclassify itself.
+ */
 export class DocumentRefusal extends Error {
   readonly fileName: string;
+  readonly code: DocumentRefusalCode;
 
-  constructor(fileName: string, reason: string) {
+  constructor(fileName: string, reason: string, code: DocumentRefusalCode = "invalid_argument") {
     // encoding_policy says non-UTF-8 is "refused by name, never guessed", so the
     // name is in the message rather than in a log line nobody reads, and the
     // wording never offers to fall back to another encoding.
     super(`${fileName}: ${reason}`);
     this.name = "DocumentRefusal";
     this.fileName = fileName;
+    this.code = code;
   }
 }
 
@@ -65,7 +74,8 @@ export function setDocumentFormatCodec(codec: DocumentFormatCodec): void {
  */
 function requireCodec(fileName: string | null): DocumentFormatCodec {
   if (documentFormatCodec === null) {
-    throw new DocumentRefusal(fileName ?? "document", "cannot be handled: no codec is installed");
+    throw new DocumentRefusal(
+      fileName ?? "document", "cannot be handled: no codec is installed", "unreadable");
   }
   return documentFormatCodec;
 }
@@ -77,13 +87,14 @@ function requireCodec(fileName: string | null): DocumentFormatCodec {
  */
 export function normalisePath(candidate: string): string {
   if (typeof candidate !== "string" || candidate.trim() === "") {
-    throw new DocumentRefusal(String(candidate), "not a usable path");
+    throw new DocumentRefusal(String(candidate), "not a usable path", "path_rejected");
   }
   const resolved = path.resolve(candidate);
   // A path containing a NUL is not a path; some filesystems truncate at it,
   // which would open a different file from the one that was checked.
   if (resolved.includes("\0")) {
-    throw new DocumentRefusal(path.basename(candidate), "path contains a NUL byte");
+    throw new DocumentRefusal(
+      path.basename(candidate), "path contains a NUL byte", "path_rejected");
   }
   return resolved;
 }
@@ -109,12 +120,13 @@ export function readDocument(filePath: string): DocumentBytes {
   try {
     raw = fs.readFileSync(resolved);
   } catch (cause) {
-    throw new DocumentRefusal(name, `cannot be read (${(cause as NodeJS.ErrnoException).code})`);
+    throw new DocumentRefusal(
+      name, `cannot be read (${(cause as NodeJS.ErrnoException).code})`, "unreadable");
   }
 
   const decoded = requireCodec(name).decode(raw, name);
   if (!decoded.ok) {
-    throw new DocumentRefusal(name, "is not valid UTF-8 and will not be opened");
+    throw new DocumentRefusal(name, "is not valid UTF-8 and will not be opened", "not_utf8");
   }
   return decoded.document;
 }
@@ -143,7 +155,8 @@ export function writeDocument(filePath: string, bytes: Buffer): void {
   } catch (cause) {
     try { fs.rmSync(temp, { force: true }); } catch { /* the original is intact */ }
     throw new DocumentRefusal(
-      path.basename(resolved), `cannot be written (${(cause as NodeJS.ErrnoException).code})`);
+      path.basename(resolved), `cannot be written (${(cause as NodeJS.ErrnoException).code})`,
+      "unwritable");
   }
 }
 

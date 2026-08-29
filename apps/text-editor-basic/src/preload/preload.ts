@@ -33,6 +33,9 @@ contextBridge.exposeInMainWorld(
   "setDirty", (dirty: boolean) => ipcRenderer.invoke("document:setDirty", dirty));
 
 contextBridge.exposeInMainWorld(
+  "getDocumentFormatState", () => ipcRenderer.invoke("document:get-format-state"));
+
+contextBridge.exposeInMainWorld(
   "readClipboardText", () => ipcRenderer.invoke("clipboard:readText"));
 
 contextBridge.exposeInMainWorld(
