@@ -1,0 +1,95 @@
+{
+  "schema": "mssp.product-record/v0",
+  "id": 1,
+  "slug": "text-editor-basic",
+  "title_zh": "純文字編輯器",
+  "title_en": "Plain-text editor",
+  "summary_zh": "一個會拒絕它讀不懂的檔案的編輯器：UTF-8 以外一律具名拒絕，BOM 與行尾隨檔案往返，而它讀到的格式看得見。",
+  "summary_en": "An editor that refuses what it cannot read: anything but UTF-8 is refused by name, BOM and line endings survive a round trip, and the format it read is visible on screen.",
+
+  "denominator_ref": "slices/01-text-editor-basic/preregistration.json",
+  "app_path": "apps/text-editor-basic",
+
+  "owners": {
+    "build": "Elenchos",
+    "manifest_and_oracle": "Metron",
+    "system_acceptance": "Pragma"
+  },
+
+  "note": "work_items is variable length and records what was actually done, not a fixed grid. Stage `state` and `applicability` are the only lifecycle facts stored; current_gate, the lifecycle projection and technical_close_eligible are DERIVED by verify-portfolio.mjs, because a stored copy can disagree with the stages it summarises.",
+
+  "work_items": [
+    { "key": "a0-shell", "title": "packaged Electron shell and security boundary",
+      "state": "passed", "evidence_refs": ["a214125", "4b8cf3a"] },
+    { "key": "a0-file-loop", "title": "new / open / save / Save As, unsaved-change guard",
+      "state": "passed", "evidence_refs": ["aa8807c", "slices/01-text-editor-basic/preregistration.json"] },
+    { "key": "a1-editing", "title": "undo / redo / clipboard / find / replace",
+      "state": "passed", "evidence_refs": ["a235b41", "b124fae"] },
+    { "key": "a2-encoding-boundary", "title": "injected codec, format carried whole, visibility row",
+      "state": "passed", "evidence_refs": ["c9ab879", "247f125"] },
+    { "key": "a2-outsourced-units", "title": "two units produced off-seat and integrated byte-identical",
+      "state": "passed",
+      "evidence_refs": ["MSSP_Architect_Exchange/evidence/2026-08-28-pragma-p1-p3-glm-batch-result.md"] }
+  ],
+
+  "stages": [
+    { "stage": "preregistration", "applicability": "required", "state": "passed",
+      "rationale": null,
+      "evidence_refs": ["slices/01-text-editor-basic/preregistration.json", "43617b2"] },
+    { "stage": "mssp_core", "applicability": "required", "state": "passed",
+      "rationale": null,
+      "evidence_refs": ["MSSP_Architect_Exchange/workbench/2026-08-26-a2-joint-core/MSSP_CORE.md"] },
+    { "stage": "work_package", "applicability": "required", "state": "passed",
+      "rationale": null,
+      "evidence_refs": ["MSSP_Architect_Exchange/workbench/2026-08-26-A2-workbench-request-r5.md"] },
+    { "stage": "candidate", "applicability": "required", "state": "passed",
+      "rationale": null,
+      "evidence_refs": ["MSSP_Architect_Exchange/evidence/2026-08-28-pragma-p1-p3-glm-batch-result.md"] },
+    { "stage": "island_verification", "applicability": "required", "state": "passed",
+      "rationale": null,
+      "evidence_refs": ["MSSP_Architect_Exchange/evidence/2026-08-28-pragma-p3-visibility-candidate-verification.md"] },
+    { "stage": "integration", "applicability": "required", "state": "passed",
+      "rationale": null,
+      "evidence_refs": ["2997b78e8570b4300638c122632efa95a4acd049"] },
+    { "stage": "system_acceptance", "applicability": "required", "state": "passed",
+      "rationale": null,
+      "evidence_refs": [
+        "MSSP_Architect_Exchange/evidence/2026-08-30-pragma-a2-successor-2997b78-system-acceptance.md",
+        "MSSP_Architect_Exchange/acceptance/2026-08-30-metron-dms-freshness-drill-review.md"
+      ] },
+    { "stage": "technical_close", "applicability": "required", "state": "passed",
+      "rationale": null,
+      "evidence_refs": [
+        "MSSP_Architect_Exchange/decisions/2026-08-30-slice-01-closed.md",
+        "7366c4ec0e4404bbb571964adcdc139254df6c50"
+      ] }
+  ],
+
+  "blockers": [],
+
+  "close": {
+    "commit": "7366c4ec0e4404bbb571964adcdc139254df6c50",
+    "tree": "c636d10854dd6aeade5ad3131f527421bc8036ae",
+    "date": "2026-08-30"
+  },
+
+  "measured": {
+    "tests": 69,
+    "test_failures": 0,
+    "drills": 3,
+    "drill_mutations_surviving": 0,
+    "acceptance_ids": 10,
+    "acceptance_ids_open": 0,
+    "outsourced_units_in_tree": 2,
+    "outsourced_units_byte_identical": true
+  },
+
+  "demonstrates": [
+    "一個單元的島驗證不涵蓋產品的載入語意：DMS 投影在島裡 11 向量、10/10 變異全過，用 CommonJS 編出來在真實視窗一行都跑不了。",
+    "跨檔案一致性要區分「原始產出」與「整合者修過的合成體」。",
+    "cancelled 與 refused 必須是不同的狀態，而且都要帶未變的邊界——缺欄位只是沉默，不是證據。",
+    "一個 acceptance 因成本超標而 RED 時，先問儀器做的是不是規格說的那個動作。"
+  ],
+
+  "intro_page": null
+}
