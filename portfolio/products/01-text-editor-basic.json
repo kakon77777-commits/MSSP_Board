@@ -17,7 +17,7 @@
     "system_acceptance": "Pragma"
   },
 
-  "note": "work_items is variable length and records what was actually done, not a fixed grid. Stage `state` and `applicability` are the only lifecycle facts stored; current_gate, the lifecycle projection and technical_close_eligible are DERIVED by lifecycle.mjs, because a stored copy can disagree with the stages it summarises. Every evidence_ref is typed and checked: a commit must be reachable from the canonical branch and a path must exist.",
+  "note": "work_items is variable length and records what was actually done, not a fixed grid. Stage `state` and `applicability` are the only lifecycle facts stored; current_gate, the lifecycle projection and technical_close_eligible are DERIVED by lifecycle.mjs, because a stored copy can disagree with the stages it summarises. Every evidence_ref is typed and checked: a commit must be reachable, a repository path is bound to the exact commit where it existed, and external evidence carries bytes plus SHA-256.",
 
   "work_items": [
     { "key": "a0-shell", "title": "packaged Electron shell and security boundary",
@@ -29,24 +29,29 @@
     { "key": "a0-file-loop", "title": "new / open / save / Save As, unsaved-change guard",
       "state": "passed",
       "evidence_refs": [
-        { "kind": "path", "ref": "slices/01-text-editor-basic/preregistration.json" }
+        { "kind": "path", "ref": "slices/01-text-editor-basic/preregistration.json",
+          "at_commit": "7366c4ec0e4404bbb571964adcdc139254df6c50" }
       ] },
     { "key": "a1-editing", "title": "undo / redo / clipboard / find / replace",
       "state": "passed",
       "evidence_refs": [
-        { "kind": "path", "ref": "apps/text-editor-basic/src/renderer/editing-model.ts" }
+        { "kind": "path", "ref": "apps/text-editor-basic/src/renderer/editing-model.ts",
+          "at_commit": "7366c4ec0e4404bbb571964adcdc139254df6c50" }
       ] },
     { "key": "a2-encoding-boundary", "title": "injected codec, format carried whole, visibility row",
       "state": "passed",
       "evidence_refs": [
-        { "kind": "path", "ref": "apps/text-editor-basic/src/main/boundary-snapshot.ts" },
-        { "kind": "path", "ref": "apps/text-editor-basic/src/tms/encoding/utf8-document-codec.ts" }
+        { "kind": "path", "ref": "apps/text-editor-basic/src/main/boundary-snapshot.ts",
+          "at_commit": "7366c4ec0e4404bbb571964adcdc139254df6c50" },
+        { "kind": "path", "ref": "apps/text-editor-basic/src/tms/encoding/utf8-document-codec.ts",
+          "at_commit": "7366c4ec0e4404bbb571964adcdc139254df6c50" }
       ] },
     { "key": "a2-outsourced-units",
       "title": "two units produced off-seat and integrated byte-identical",
       "state": "passed",
       "evidence_refs": [
-        { "kind": "path", "ref": "apps/text-editor-basic/src/dms/encoding-visibility.ts" }
+        { "kind": "path", "ref": "apps/text-editor-basic/src/dms/encoding-visibility.ts",
+          "at_commit": "7366c4ec0e4404bbb571964adcdc139254df6c50" }
       ] }
   ],
 
@@ -54,28 +59,34 @@
     { "stage": "preregistration", "applicability": "required", "state": "passed",
       "rationale": null,
       "evidence_refs": [
-        { "kind": "path", "ref": "slices/01-text-editor-basic/preregistration.json" }
+        { "kind": "path", "ref": "slices/01-text-editor-basic/preregistration.json",
+          "at_commit": "7366c4ec0e4404bbb571964adcdc139254df6c50" }
       ] },
     { "stage": "mssp_core", "applicability": "required", "state": "passed",
       "rationale": null,
       "evidence_refs": [
-        { "kind": "path", "ref": "slices/01-text-editor-basic/verify-preregistration.mjs" }
+        { "kind": "path", "ref": "slices/01-text-editor-basic/verify-preregistration.mjs",
+          "at_commit": "7366c4ec0e4404bbb571964adcdc139254df6c50" }
       ] },
     { "stage": "work_package", "applicability": "required", "state": "passed",
       "rationale": null,
       "evidence_refs": [
-        { "kind": "path", "ref": "apps/text-editor-basic/src/sms/document-format-contract.ts" }
+        { "kind": "path", "ref": "apps/text-editor-basic/src/sms/document-format-contract.ts",
+          "at_commit": "7366c4ec0e4404bbb571964adcdc139254df6c50" }
       ] },
     { "stage": "candidate", "applicability": "required", "state": "passed",
       "rationale": null,
       "evidence_refs": [
-        { "kind": "path", "ref": "apps/text-editor-basic/src/tms/encoding/utf8-document-codec.ts" }
+        { "kind": "path", "ref": "apps/text-editor-basic/src/tms/encoding/utf8-document-codec.ts",
+          "at_commit": "7366c4ec0e4404bbb571964adcdc139254df6c50" }
       ] },
     { "stage": "island_verification", "applicability": "required", "state": "passed",
       "rationale": null,
       "evidence_refs": [
-        { "kind": "path", "ref": "apps/text-editor-basic/tests/unit-manifest.test.mjs" },
-        { "kind": "path", "ref": "apps/text-editor-basic/tests/drill-unit-manifest.mjs" }
+        { "kind": "path", "ref": "apps/text-editor-basic/tests/unit-manifest.test.mjs",
+          "at_commit": "7366c4ec0e4404bbb571964adcdc139254df6c50" },
+        { "kind": "path", "ref": "apps/text-editor-basic/tests/drill-unit-manifest.mjs",
+          "at_commit": "7366c4ec0e4404bbb571964adcdc139254df6c50" }
       ] },
     { "stage": "integration", "applicability": "required", "state": "passed",
       "rationale": null,
@@ -85,14 +96,21 @@
     { "stage": "system_acceptance", "applicability": "required", "state": "passed",
       "rationale": null,
       "evidence_refs": [
-        { "kind": "path", "ref": "apps/text-editor-basic/tests/boundary-contract.test.mjs" },
-        { "kind": "path", "ref": "apps/text-editor-basic/tests/drill-boundary-contract.mjs" },
-        { "kind": "path", "ref": "apps/text-editor-basic/tests/drill-dms-build-freshness.mjs" }
+        { "kind": "path", "ref": "apps/text-editor-basic/tests/boundary-contract.test.mjs",
+          "at_commit": "7366c4ec0e4404bbb571964adcdc139254df6c50" },
+        { "kind": "path", "ref": "apps/text-editor-basic/tests/drill-boundary-contract.mjs",
+          "at_commit": "7366c4ec0e4404bbb571964adcdc139254df6c50" },
+        { "kind": "path", "ref": "apps/text-editor-basic/tests/drill-dms-build-freshness.mjs",
+          "at_commit": "7366c4ec0e4404bbb571964adcdc139254df6c50" }
       ] },
     { "stage": "technical_close", "applicability": "required", "state": "passed",
       "rationale": null,
       "evidence_refs": [
-        { "kind": "commit", "ref": "7366c4ec0e4404bbb571964adcdc139254df6c50" }
+        { "kind": "commit", "ref": "7366c4ec0e4404bbb571964adcdc139254df6c50" },
+        { "kind": "external_digest",
+          "ref": "MSSP_Architect_Exchange/decisions/2026-08-30-slice-01-closed.md",
+          "bytes": 2826,
+          "sha256": "dfda7287e4015b18bf9f38cf6040e4d0cae3aa675ee3882e7ba12761b2d685c3" }
       ] }
   ],
 

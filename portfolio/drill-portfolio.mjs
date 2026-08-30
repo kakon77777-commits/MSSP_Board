@@ -25,10 +25,13 @@ const say = (line) => process.stdout.write(line + "\n");
 
 function verify() {
   const run = spawnSync(process.execPath, [path.join(here, "verify-portfolio.mjs")],
-    { cwd: repo, encoding: "utf8" });
+    { cwd: repo, encoding: "utf8", timeout: 30_000 });
+  const output = `${run.stderr ?? ""}\n${run.stdout ?? ""}`.trim();
+  const state = run.status === 0 ? "green"
+    : run.status === 1 && /^\s*FAIL\s/m.test(output) ? "red" : "error";
   return {
-    state: run.status === 0 ? "green" : "red",
-    first: (run.stderr || run.stdout || "").trim().split(/\r?\n/)[0] ?? "",
+    state,
+    first: run.error?.message ?? output.split(/\r?\n/)[0] ?? "",
   };
 }
 
@@ -54,8 +57,8 @@ const MUTATIONS = [
   { name: "a closed product has an acceptance ID still open", file: RECORD,
     from: '"acceptance_ids_open": 0', to: '"acceptance_ids_open": 1' },
   { name: "an evidence path does not exist", file: RECORD,
-    from: '{ "kind": "path", "ref": "apps/text-editor-basic/src/main/boundary-snapshot.ts" }',
-    to: '{ "kind": "path", "ref": "apps/text-editor-basic/src/main/does-not-exist.ts" }' },
+    from: '{ "kind": "path", "ref": "apps/text-editor-basic/src/main/boundary-snapshot.ts",\n          "at_commit": "7366c4ec0e4404bbb571964adcdc139254df6c50" }',
+    to: '{ "kind": "path", "ref": "apps/text-editor-basic/src/main/does-not-exist.ts",\n          "at_commit": "7366c4ec0e4404bbb571964adcdc139254df6c50" }' },
   { name: "an evidence commit is abbreviated", file: RECORD,
     from: '{ "kind": "commit", "ref": "2997b78e8570b4300638c122632efa95a4acd049" }',
     to: '{ "kind": "commit", "ref": "2997b78" }' },
@@ -87,6 +90,7 @@ if (control.state !== "green") {
 }
 
 let green = 0;
+let errors = 0;
 let didNotApply = 0;
 for (const mutation of MUTATIONS) {
   const original = readFileSync(mutation.file, "utf8");
@@ -108,6 +112,9 @@ for (const mutation of MUTATIONS) {
   if (outcome.state === "green") {
     say(`  GREEN (hole or no-op)  ${mutation.name}`);
     green += 1;
+  } else if (outcome.state === "error") {
+    say(`  ERROR (verifier did not reject cleanly)  ${mutation.name}: ${outcome.first}`);
+    errors += 1;
   } else {
     say(`  red   ${mutation.name.padEnd(48)} ${outcome.first.replace(/^\s*FAIL\s*/, "").slice(0, 60)}`);
   }
@@ -115,5 +122,6 @@ for (const mutation of MUTATIONS) {
 
 const restored = verify();
 say(`\n  restored control ... ${restored.state}`);
-say(`  ${MUTATIONS.length} mutations   ${green} green   ${didNotApply} did not apply`);
-process.exit(green === 0 && didNotApply === 0 && restored.state === "green" ? 0 : 1);
+say(`  ${MUTATIONS.length} mutations   ${green} green   ${errors} errors   ${didNotApply} did not apply`);
+process.exit(green === 0 && errors === 0 && didNotApply === 0
+  && restored.state === "green" ? 0 : 1);

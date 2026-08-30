@@ -1,7 +1,12 @@
 {
   "schema": "mssp.portfolio-roadmap/v0-experimental",
   "note": "Fixed identity for the twenty positions, and nothing else. A position carries a slug and where that slug was decided; it carries no summary, no measured claim, no close and no owner, because a position that has not been built has not earned any of those. Product work lives in portfolio/products/NN-slug.json and only exists once there is work.",
-  "selection_source": "MSSP_Architect_Exchange/acceptance/2026-08-30-pragma-portfolio-skeleton-candidates-review.md",
+  "selection_source": {
+    "kind": "repository_snapshot",
+    "ref": "portfolio/evidence/2026-08-30-product-selection.json",
+    "bytes": 2216,
+    "sha256": "074b6ab54bec1f331f73e42c7c769d82f7857c466bb4dbcee72cedaea34a3a1e"
+  },
   "positions": [
     { "position": "01", "slug": "text-editor-basic",  "selection": "recovered" },
     { "position": "02", "slug": "file-manager-basic", "selection": "recovered" },

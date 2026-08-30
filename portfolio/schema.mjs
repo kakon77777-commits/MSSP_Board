@@ -8,6 +8,13 @@
 export const ROADMAP_FIELDS = Object.freeze(["schema", "note", "selection_source", "positions"]);
 export const ROADMAP_POSITION_FIELDS = Object.freeze(["position", "slug", "selection"]);
 export const SELECTIONS = Object.freeze(["recovered", "unnamed_pending_bounded_review"]);
+export const ROADMAP_SCHEMA = "mssp.portfolio-roadmap/v0-experimental";
+export const PRODUCT_SCHEMA = "mssp.product-record/v0-experimental";
+export const INDEX_SCHEMA = "mssp.portfolio-index/v0-experimental";
+export const SELECTION_SNAPSHOT_SCHEMA =
+  "mssp.portfolio-selection-snapshot/v0-experimental";
+export const SELECTION_SNAPSHOT_FIELDS = Object.freeze(
+  ["schema", "note", "source", "positions"]);
 
 export const PRODUCT_FIELDS = Object.freeze([
   "schema", "position", "id", "slug", "title_zh", "title_en", "summary_zh", "summary_en",
@@ -22,8 +29,14 @@ export const WORK_ITEM_STATES = Object.freeze(
 export const BLOCKER_FIELDS = Object.freeze(["key", "title", "state", "rationale", "evidence_refs"]);
 export const BLOCKER_STATES = Object.freeze(
   ["open", "resolved", "moved_outside_technical_slice"]);
-export const EVIDENCE_FIELDS = Object.freeze(["kind", "ref"]);
-export const EVIDENCE_KINDS = Object.freeze(["commit", "path"]);
+export const COMMIT_EVIDENCE_FIELDS = Object.freeze(["kind", "ref"]);
+export const PATH_EVIDENCE_FIELDS = Object.freeze(["kind", "ref", "at_commit"]);
+export const EXTERNAL_EVIDENCE_FIELDS = Object.freeze(
+  ["kind", "ref", "bytes", "sha256"]);
+export const REPOSITORY_SNAPSHOT_EVIDENCE_FIELDS = Object.freeze(
+  ["kind", "ref", "bytes", "sha256"]);
+export const EVIDENCE_KINDS = Object.freeze(
+  ["commit", "path", "external_digest", "repository_snapshot"]);
 export const CLOSE_FIELDS = Object.freeze(["commit", "tree", "date"]);
 export const OWNER_FIELDS = Object.freeze(["build", "manifest_and_oracle", "system_acceptance"]);
 export const MEASURED_FIELDS = Object.freeze([
@@ -31,6 +44,12 @@ export const MEASURED_FIELDS = Object.freeze([
   "acceptance_ids", "acceptance_ids_open",
   "outsourced_units_in_tree", "outsourced_units_byte_identical",
 ]);
+
+export const isPlainObject = (value) => value !== null
+  && typeof value === "object" && !Array.isArray(value);
+export const isNonEmptyString = (value) => typeof value === "string"
+  && value.trim().length > 0;
+export const isNonNegativeInteger = (value) => Number.isInteger(value) && value >= 0;
 
 /**
  * Find duplicate object keys, which JSON.parse silently collapses.
@@ -41,37 +60,56 @@ export const MEASURED_FIELDS = Object.freeze([
  */
 export function duplicateKeys(text) {
   const found = [];
-  const stack = [new Set()];
+  const stack = [];
   let index = 0;
   let inString = false;
   let escaped = false;
-  let current = "";
+  let currentRaw = "";
   let lastKey = null;
-  let expectingKey = false;
 
   while (index < text.length) {
     const ch = text[index];
     if (inString) {
-      if (escaped) { current += ch; escaped = false; }
+      if (escaped) { currentRaw += `\\${ch}`; escaped = false; }
       else if (ch === "\\") { escaped = true; }
-      else if (ch === '"') { inString = false; lastKey = current; }
-      else current += ch;
+      else if (ch === '"') {
+        inString = false;
+        const frame = stack[stack.length - 1];
+        if (frame?.type === "object" && frame.expectingKey) {
+          try { lastKey = JSON.parse(`"${currentRaw}"`); }
+          catch { lastKey = currentRaw; }
+        }
+      } else currentRaw += ch;
       index += 1;
       continue;
     }
-    if (ch === '"') { inString = true; current = ""; index += 1; continue; }
-    if (ch === "{") { stack.push(new Set()); expectingKey = true; index += 1; continue; }
-    if (ch === "}") { stack.pop(); expectingKey = false; index += 1; continue; }
-    if (ch === "[") { stack.push(new Set()); expectingKey = false; index += 1; continue; }
+    if (ch === '"') { inString = true; currentRaw = ""; index += 1; continue; }
+    if (ch === "{") {
+      stack.push({ type: "object", keys: new Set(), expectingKey: true });
+      index += 1;
+      continue;
+    }
+    if (ch === "}") { stack.pop(); index += 1; continue; }
+    if (ch === "[") {
+      stack.push({ type: "array", keys: null, expectingKey: false });
+      index += 1;
+      continue;
+    }
     if (ch === "]") { stack.pop(); index += 1; continue; }
-    if (ch === ",") { expectingKey = true; index += 1; continue; }
+    if (ch === ",") {
+      const frame = stack[stack.length - 1];
+      if (frame?.type === "object") frame.expectingKey = true;
+      index += 1;
+      continue;
+    }
     if (ch === ":") {
-      if (expectingKey && lastKey !== null) {
-        const scope = stack[stack.length - 1];
-        if (scope.has(lastKey)) found.push(lastKey);
-        scope.add(lastKey);
+      const frame = stack[stack.length - 1];
+      if (frame?.type === "object" && frame.expectingKey && lastKey !== null) {
+        if (frame.keys.has(lastKey)) found.push(lastKey);
+        frame.keys.add(lastKey);
+        frame.expectingKey = false;
+        lastKey = null;
       }
-      expectingKey = false;
       index += 1;
       continue;
     }
@@ -82,12 +120,12 @@ export function duplicateKeys(text) {
 
 /** Field names present that the shape does not declare. */
 export function unknownFields(object, allowed) {
-  if (object === null || typeof object !== "object" || Array.isArray(object)) return [];
+  if (!isPlainObject(object)) return [];
   return Object.keys(object).filter((key) => !allowed.includes(key));
 }
 
 /** Field names the shape declares that are absent. */
 export function missingFields(object, required) {
-  if (object === null || typeof object !== "object") return [...required];
+  if (!isPlainObject(object)) return [...required];
   return required.filter((key) => !(key in object));
 }
