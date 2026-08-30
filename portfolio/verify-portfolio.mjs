@@ -21,7 +21,8 @@ import {
 } from "./lifecycle.mjs";
 import { buildIndex, loadRecords, loadRoadmap, renderReadme } from "./render-index.mjs";
 import {
-  BLOCKER_FIELDS, BLOCKER_STATES, CLOSE_FIELDS, COMMIT_EVIDENCE_FIELDS,
+  BLOCKER_FIELDS, BLOCKER_STATES, CANDIDATE_ARTIFACT_FIELDS,
+  CANDIDATE_ARTIFACT_SCHEMA, CLOSED_OWNER_LABELS, CLOSE_FIELDS, COMMIT_EVIDENCE_FIELDS,
   EVIDENCE_KINDS, EXECUTION_ACCEPTANCE_FIELDS, EXECUTION_DRILL_FIELDS,
   EXECUTION_SNAPSHOT_FIELDS, EXECUTION_SNAPSHOT_SCHEMA, EXECUTION_TEST_FIELDS,
   EXECUTION_UNIT_FIELDS, EXTERNAL_EVIDENCE_FIELDS, INDEX_SCHEMA, MEASURED_FIELDS,
@@ -41,6 +42,45 @@ const repo = path.join(here, "..");
 // not merely present as an object. A dangling or fetched-but-unmerged commit
 // exists and proves nothing about what was actually shipped.
 const CANONICAL_REF = "main";
+const EXPECTED_EXECUTION_COMMANDS = Object.freeze({
+  "npm-test": {
+    kind: "test", cwd: "apps/text-editor-basic", command: "npm test",
+    resultRef: "portfolio/evidence/raw/2026-08-30-pragma-a2-system-acceptance.md",
+    outputMarkers: ["npm test", "69 / 69 pass"],
+    counts: { tests: 69, failures: 0 },
+  },
+  "drill-boundary-contract": {
+    kind: "drill", cwd: "apps/text-editor-basic",
+    command: "node tests/drill-boundary-contract.mjs",
+    resultRef: "portfolio/evidence/raw/2026-08-30-pragma-a2-system-acceptance.md",
+    outputMarkers: ["drill-boundary-contract", "7 mutations / 0 green / 0 did not apply"],
+    counts: { mutations: 7, surviving: 0 },
+  },
+  "drill-unit-manifest": {
+    kind: "drill", cwd: "apps/text-editor-basic",
+    command: "node tests/drill-unit-manifest.mjs",
+    resultRef: "portfolio/evidence/raw/2026-08-30-pragma-a2-system-acceptance.md",
+    outputMarkers: ["drill-unit-manifest", "10 mutations / 0 green / 0 did not apply"],
+    counts: { mutations: 10, surviving: 0 },
+  },
+  "drill-dms-build-freshness": {
+    kind: "drill", cwd: "apps/text-editor-basic",
+    command: "node tests/drill-dms-build-freshness.mjs",
+    resultRef: "portfolio/evidence/raw/2026-08-30-metron-dms-freshness-review.md",
+    outputMarkers: ["mutated built DMS artifact", "red", "restored control", "green"],
+    counts: { mutations: 1, surviving: 0 },
+  },
+});
+const EXPECTED_CANDIDATE_UNITS = Object.freeze({
+  "apps/text-editor-basic/src/tms/encoding/utf8-document-codec.ts": {
+    unitId: "a2-p1-utf8-document-codec-v3",
+    artifactRef: "portfolio/evidence/candidates/a2-p1-utf8-document-codec-v3.json",
+  },
+  "apps/text-editor-basic/src/dms/encoding-visibility.ts": {
+    unitId: "a2-p3-encoding-visibility-v4",
+    artifactRef: "portfolio/evidence/candidates/a2-p3-encoding-visibility-v4.json",
+  },
+});
 
 const failures = [];
 const fail = (where, message) => failures.push(`${where}: ${message}`);
@@ -234,6 +274,55 @@ function checkExecutionSnapshot(where, record) {
       fail(where, `execution command ${command.id} has invalid command/cwd`);
     }
     if (command.exit_code !== 0) fail(where, `execution command ${command.id} did not exit 0`);
+    const expected = EXPECTED_EXECUTION_COMMANDS[command.id];
+    if (expected === undefined
+        || command.kind !== expected.kind || command.cwd !== expected.cwd
+        || command.command !== expected.command) {
+      fail(where, `execution command ${command.id} does not match the registered command set`);
+    }
+    if (expected !== undefined) {
+      for (const [countName, countValue] of Object.entries(expected.counts)) {
+        if (command[countName] !== countValue) {
+          fail(where, `execution command ${command.id} ${countName} does not match captured output`);
+        }
+      }
+    }
+    checkEvidence(`${where} command ${command.id} result`, [command.result_source]);
+    if (expected !== undefined) {
+      if (command.result_source?.kind !== "repository_snapshot"
+          || command.result_source.ref !== expected.resultRef) {
+        fail(where, `execution command ${command.id} has the wrong captured result subject`);
+      } else {
+        const resultPath = checkRepoRelative(where, command.result_source.ref);
+        if (resultPath !== null && existsSync(path.join(repo, resultPath))) {
+          const captured = readFileSync(path.join(repo, resultPath), "utf8");
+          if (!expected.outputMarkers.every((marker) => captured.includes(marker))) {
+            fail(where, `execution command ${command.id} captured output lacks required markers`);
+          }
+        }
+      }
+    }
+    if (fullSha(snapshot.subject_commit)) {
+      if (command.kind === "test") {
+        try {
+          const packageJson = JSON.parse(gitBuffer([
+            "show", `${snapshot.subject_commit}:${command.cwd}/package.json`,
+          ]).toString("utf8"));
+          if (packageJson.scripts?.test !== "node --test tests/*.test.mjs") {
+            fail(where, "execution npm-test does not match the subject package test script");
+          }
+        } catch (error) {
+          fail(where, `execution npm-test package subject cannot be read: ${error.message}`);
+        }
+      } else if (command.kind === "drill") {
+        const script = command.command.startsWith("node ") ? command.command.slice(5) : "";
+        const scriptPath = checkRepoRelative(where, `${command.cwd}/${script}`);
+        if (scriptPath === null
+            || !gitOk(["cat-file", "-e", `${snapshot.subject_commit}:${scriptPath}`])) {
+          fail(where, `execution drill ${command.id} does not exist at the subject commit`);
+        }
+      }
+    }
     if (command.kind === "test") {
       if (!isNonNegativeInteger(command.tests) || !isNonNegativeInteger(command.failures)) {
         fail(where, `execution test ${command.id} has invalid counts`);
@@ -245,6 +334,11 @@ function checkExecutionSnapshot(where, record) {
       }
       drills.push(command);
     }
+  }
+  const expectedCommandIds = Object.keys(EXPECTED_EXECUTION_COMMANDS);
+  if (commandIds.size !== expectedCommandIds.length
+      || !expectedCommandIds.every((id) => commandIds.has(id))) {
+    fail(where, "execution snapshot command IDs do not match the registered set");
   }
   if (tests.length !== 1) fail(where, `execution snapshot must hold one test command; found ${tests.length}`);
 
@@ -262,6 +356,11 @@ function checkExecutionSnapshot(where, record) {
       fail(where, "execution acceptance counts are invalid");
     }
     checkEvidence(`${where} acceptance provenance`, [acceptance.source]);
+    if (acceptance.source?.kind !== "repository_snapshot"
+        || acceptance.source.ref
+          !== "portfolio/evidence/raw/2026-08-30-pragma-a2-system-acceptance.md") {
+      fail(where, "execution acceptance does not name the registered independent result subject");
+    }
   }
 
   const units = Array.isArray(snapshot.outsourced_units) ? snapshot.outsourced_units : [];
@@ -275,6 +374,41 @@ function checkExecutionSnapshot(where, record) {
         || !fullDigest(unit.candidate_sha256) || !fullDigest(unit.integrated_sha256)) {
       fail(where, `outsourced unit ${unit.path} has invalid byte/hash fields`);
     }
+    checkEvidence(`${where} outsourced candidate`, [unit.candidate_artifact]);
+    const expectedUnit = EXPECTED_CANDIDATE_UNITS[unit.path];
+    if (expectedUnit === undefined
+        || unit.candidate_artifact?.kind !== "repository_snapshot"
+        || unit.candidate_artifact.ref !== expectedUnit.artifactRef) {
+      fail(where, `outsourced unit ${unit.path} has no registered candidate artifact`);
+    } else {
+      const candidatePath = checkRepoRelative(where, unit.candidate_artifact.ref);
+      if (candidatePath !== null && existsSync(path.join(repo, candidatePath))) {
+        const relativeCandidate = path.relative(here, path.join(repo, candidatePath)).replace(/\\/g, "/");
+        const artifact = checkStrictJson(relativeCandidate, CANDIDATE_ARTIFACT_FIELDS);
+        if (artifact !== null) {
+          if (artifact.schema !== CANDIDATE_ARTIFACT_SCHEMA
+              || artifact.unit_id !== expectedUnit.unitId
+              || artifact.media_type !== "text/typescript" || artifact.encoding !== "base64") {
+            fail(where, `outsourced candidate ${candidatePath} identity/schema is invalid`);
+          }
+          const encoded = artifact.payload_base64;
+          const canonicalBase64 = typeof encoded === "string"
+            && /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(encoded);
+          const candidate = canonicalBase64 ? Buffer.from(encoded, "base64") : null;
+          if (candidate === null || candidate.toString("base64") !== encoded) {
+            fail(where, `outsourced candidate ${candidatePath} payload is not canonical base64`);
+          } else {
+            const candidateDigest = createHash("sha256").update(candidate).digest("hex");
+            if (candidate.byteLength !== artifact.artifact_bytes
+                || candidateDigest !== artifact.artifact_sha256
+                || candidate.byteLength !== unit.bytes
+                || candidateDigest !== unit.candidate_sha256) {
+              fail(where, `outsourced candidate ${candidatePath} bytes/hash do not match the unit claim`);
+            }
+          }
+        }
+      }
+    }
     if (unitPath !== null && fullSha(snapshot.subject_commit)
         && gitOk(["cat-file", "-e", `${snapshot.subject_commit}:${unitPath}`])) {
       const integrated = gitBuffer(["show", `${snapshot.subject_commit}:${unitPath}`]);
@@ -287,6 +421,17 @@ function checkExecutionSnapshot(where, record) {
     }
   }
   checkEvidence(`${where} execution provenance`, snapshot.sources);
+  const sourceRefs = Array.isArray(snapshot.sources)
+    ? snapshot.sources.map((source) => source?.kind === "repository_snapshot" ? source.ref : null)
+    : [];
+  const expectedSources = [
+    "portfolio/evidence/raw/2026-08-30-slice-01-closed.md",
+    "portfolio/evidence/raw/2026-08-30-metron-dms-freshness-review.md",
+  ];
+  if (sourceRefs.length !== expectedSources.length
+      || !expectedSources.every((refValue) => sourceRefs.includes(refValue))) {
+    fail(where, "execution provenance does not match the registered local evidence subjects");
+  }
 
   const derived = {
     tests: tests[0]?.tests,
@@ -581,8 +726,9 @@ for (const [position, { record, file }] of records) {
   }
   checkExecutionSnapshot(where, record);
   const closedOwners = OWNER_FIELDS.map((key) => record.owners?.[key]);
-  if (new Set(closedOwners).size !== OWNER_FIELDS.length) {
-    fail(where, "closed product build, manifest/oracle and system-acceptance owners are not pairwise distinct");
+  if (new Set(closedOwners).size !== OWNER_FIELDS.length
+      || !CLOSED_OWNER_LABELS.every((label) => closedOwners.includes(label))) {
+    fail(where, "closed product owners must be exactly Elenchos, Metron and Pragma, each once");
   }
   if (Array.isArray(record.blockers)
       && record.blockers.some((b) => isPlainObject(b) && b.state === "open")) {
@@ -615,6 +761,7 @@ if (failures.length === 0) {
   process.stdout.write("  ok   strict schema: no unknown fields, no duplicate keys, identity agrees\n");
   process.stdout.write(`  ok   repository evidence resolves; every close is reachable from ${CANONICAL_REF}, `
     + "its tree matches, and its local decision snapshot agrees\n");
+  process.stdout.write("  ok   measured values bind registered commands, local result captures and candidate operands\n");
   process.stdout.write("  ok   external digests are recorded provenance only; they are not claimed locally resolved\n");
   process.stdout.write("  ok   the generated index and README match the records\n");
   for (const [position, { record }] of records) {

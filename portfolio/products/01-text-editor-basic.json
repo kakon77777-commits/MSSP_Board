@@ -136,8 +136,8 @@
   "measured_evidence": {
     "kind": "repository_snapshot",
     "ref": "portfolio/evidence/2026-08-30-text-editor-execution.json",
-    "bytes": 2643,
-    "sha256": "ee7e00f355f451d48347c300fce68d078c8ae97ea7300db2900761ee452d2e7e"
+    "bytes": 4190,
+    "sha256": "2c4094996278a115e0d2a171807972d3100e87eda9328a7df1867891fc1228b9"
   },
 
   "demonstrates": [

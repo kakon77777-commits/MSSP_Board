@@ -26,14 +26,19 @@ export const EXECUTION_SNAPSHOT_FIELDS = Object.freeze([
   "observed_at", "commands", "acceptance", "outsourced_units", "sources",
 ]);
 export const EXECUTION_TEST_FIELDS = Object.freeze([
-  "id", "kind", "cwd", "command", "exit_code", "tests", "failures",
+  "id", "kind", "cwd", "command", "exit_code", "tests", "failures", "result_source",
 ]);
 export const EXECUTION_DRILL_FIELDS = Object.freeze([
-  "id", "kind", "cwd", "command", "exit_code", "mutations", "surviving",
+  "id", "kind", "cwd", "command", "exit_code", "mutations", "surviving", "result_source",
 ]);
 export const EXECUTION_ACCEPTANCE_FIELDS = Object.freeze(["ids", "open", "source"]);
 export const EXECUTION_UNIT_FIELDS = Object.freeze([
-  "path", "bytes", "candidate_sha256", "integrated_sha256",
+  "path", "bytes", "candidate_sha256", "integrated_sha256", "candidate_artifact",
+]);
+export const CANDIDATE_ARTIFACT_SCHEMA = "mssp.candidate-artifact/v0-experimental";
+export const CANDIDATE_ARTIFACT_FIELDS = Object.freeze([
+  "schema", "unit_id", "media_type", "encoding", "artifact_bytes",
+  "artifact_sha256", "payload_base64",
 ]);
 
 export const PRODUCT_FIELDS = Object.freeze([
@@ -59,6 +64,7 @@ export const EVIDENCE_KINDS = Object.freeze(
   ["commit", "path", "external_digest", "repository_snapshot"]);
 export const CLOSE_FIELDS = Object.freeze(["commit", "tree", "date"]);
 export const OWNER_FIELDS = Object.freeze(["build", "manifest_and_oracle", "system_acceptance"]);
+export const CLOSED_OWNER_LABELS = Object.freeze(["Elenchos", "Metron", "Pragma"]);
 export const MEASURED_FIELDS = Object.freeze([
   "tests", "test_failures", "drills", "drill_mutations_surviving",
   "acceptance_ids", "acceptance_ids_open",
