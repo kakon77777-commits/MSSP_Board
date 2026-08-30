@@ -87,6 +87,28 @@ const drills = [
     }),
   },
   {
+    label: "reduce root-selection failed meaning to one character",
+    expect: "root selection failed arm",
+    apply: mutateJson((d) => {
+      const meanings = d.cross_cutting_contracts?.operation_result?.root_selection_meanings;
+      if (!meanings || meanings.failed === "x") return false;
+      meanings.failed = "x";
+      return true;
+    }),
+  },
+  {
+    label: "remove runnable root-selection failure row",
+    expect: "choose-root",
+    apply: mutateJson((d) => {
+      const ids = d.capability_acceptance_map?.["choose-root"];
+      if (!Array.isArray(ids) || !ids.includes("FM-ROOT-FAIL")
+          || !d.acceptance_rows?.["FM-ROOT-FAIL"]) return false;
+      d.capability_acceptance_map["choose-root"] = ids.filter((id) => id !== "FM-ROOT-FAIL");
+      delete d.acceptance_rows["FM-ROOT-FAIL"];
+      return true;
+    }),
+  },
+  {
     label: "reduce snapshot-unavailable system row to one character",
     expect: "system acceptance",
     apply: mutateJson((d) => {
@@ -179,6 +201,18 @@ const drills = [
       const subject = d.fixture_contract?.dynamic_subjects?.find((x) => x.id === "locked-member");
       if (!subject || subject.precondition_failure !== "DID_NOT_APPLY_acceptance_failure") return false;
       subject.precondition_failure = "caught_attack";
+      return true;
+    }),
+  },
+  {
+    label: "remove root-open failure dynamic subject",
+    expect: "root-open failure",
+    apply: mutateJson((d) => {
+      const subjects = d.fixture_contract?.dynamic_subjects;
+      if (!Array.isArray(subjects) || !subjects.some((x) => x.id === "root-open-failure")) {
+        return false;
+      }
+      d.fixture_contract.dynamic_subjects = subjects.filter((x) => x.id !== "root-open-failure");
       return true;
     }),
   },

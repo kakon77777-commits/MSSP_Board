@@ -36,7 +36,7 @@ const SYSTEM_ROWS = [
   "FM-SYS-RELAUNCH-RESELECT",
 ];
 const REQUIRED_SPECIAL_ROWS = {
-  "choose-root": ["FM-ROOT-CANCEL"],
+  "choose-root": ["FM-ROOT-CANCEL", "FM-ROOT-FAIL"],
   "entry-selection": ["FM-SELECT-SINGLE", "FM-SELECT-MULTI"],
   "copy-entries": ["FM-COPY-FILE", "FM-COPY-DIRECTORY"],
   "move-entries": ["FM-MOVE-FILE", "FM-MOVE-DIRECTORY"],
@@ -55,7 +55,7 @@ const REQUIRED_FIXTURES = [
 const DYNAMIC_SUBJECT_IDS = [
   "escape-junction", "locked-member", "unreadable-entry", "refresh-change",
   "trash-failure", "post-operation-snapshot-failure", "unchanged-refresh",
-  "relaunch-reselect",
+  "root-open-failure", "relaunch-reselect",
 ];
 
 const sameArray = (actual, expected) => Array.isArray(actual)
@@ -254,6 +254,11 @@ export function verify(root = ROOT) {
     rows?.["FM-ROOT-REFUSE"]?.action?.includes("regular file path")
     && rows?.["FM-ROOT-REFUSE"]?.action?.includes("missing directory path")
     && !rows?.["FM-ROOT-REFUSE"]?.action?.includes("disallowed root"));
+  check("choose-root runnable failed arm",
+    rows?.["FM-ROOT-FAIL"]?.action?.includes("root-open-failure")
+    && rows?.["FM-ROOT-FAIL"]?.oracle?.includes("typed failed")
+    && rows?.["FM-ROOT-FAIL"]?.oracle?.includes("no snapshot")
+    && rows?.["FM-ROOT-FAIL"]?.failure_signal?.includes("normal control fails"));
   check("navigation escape separates malformed payload from real junction ID",
     rows?.["FM-NAV-ESCAPE"]?.action?.includes("malformed IPC")
     && rows?.["FM-NAV-ESCAPE"]?.action?.includes("escape-junction")
@@ -299,6 +304,9 @@ export function verify(root = ROOT) {
     contracts?.operation_result?.root_selection_meanings,
     ["accepted", "cancelled", "refused", "failed"])
     && Object.values(contracts.operation_result.root_selection_meanings).every(nonempty));
+  check("root selection failed arm meaning",
+    contracts?.operation_result?.root_selection_meanings?.failed
+      === "the picker or admitted root-open operation fails operationally without replacing the previous root");
   check("per-entry status meanings", exactKeys(contracts?.operation_result?.per_entry_meanings,
     ["accepted", "refused", "failed"])
     && Object.values(contracts.operation_result.per_entry_meanings).every(nonempty));
@@ -453,6 +461,14 @@ export function verify(root = ROOT) {
     && byDynamicId.get("post-operation-snapshot-failure")?.operation?.includes("snapshot_read_failed")
     && byDynamicId.get("post-operation-snapshot-failure")?.expected?.includes("snapshot state is unavailable")
     && byDynamicId.get("post-operation-snapshot-failure")?.cleanup?.includes("disarm the adapter"));
+  check("root-open failure dynamic subject exact binding",
+    sameArray(byDynamicId.get("root-open-failure")?.paths, ["."])
+    && byDynamicId.get("root-open-failure")?.operation?.includes("root_snapshot_read_failed")
+    && byDynamicId.get("root-open-failure")?.precondition_proof?.includes("valid ordinary root")
+    && byDynamicId.get("root-open-failure")?.expected?.includes("A remains selected")
+    && byDynamicId.get("root-open-failure")?.expected?.includes("no B snapshot")
+    && byDynamicId.get("root-open-failure")?.cleanup?.includes("accepted normal snapshot")
+    && byDynamicId.get("root-open-failure")?.cleanup?.includes("reselect A"));
   check("relaunch dynamic subject exact binding",
     sameArray(byDynamicId.get("relaunch-reselect")?.paths, ["."])
     && byDynamicId.get("relaunch-reselect")?.precondition_proof?.includes("B differs from A")

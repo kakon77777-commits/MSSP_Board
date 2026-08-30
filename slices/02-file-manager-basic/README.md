@@ -15,7 +15,7 @@ One selected root is always visible; changing it is explicit; navigation above i
 
 | Capability | Acceptance rows |
 |---|---:|
-| `choose-root` | 4 |
+| `choose-root` | 5 |
 | `directory-view` | 2 |
 | `navigate-within-root` | 3 |
 | `refresh-external-change` | 2 |
@@ -26,7 +26,7 @@ One selected root is always visible; changing it is explicit; navigation above i
 | `move-entries` | 4 |
 | `trash-entries` | 3 |
 
-Total: **10 capabilities / 29 independently named rows**.
+Total: **10 capabilities / 30 independently named rows**.
 
 Path authority, snapshot identity, result unions and error projection are cross-cutting contracts, not extra denominator items.
 

@@ -57,7 +57,7 @@
     "trash-entries"
   ],
   "capability_acceptance_map": {
-    "choose-root": ["FM-ROOT-SELECT", "FM-ROOT-CANCEL", "FM-ROOT-REFUSE", "FM-ROOT-REPARSE"],
+    "choose-root": ["FM-ROOT-SELECT", "FM-ROOT-CANCEL", "FM-ROOT-FAIL", "FM-ROOT-REFUSE", "FM-ROOT-REPARSE"],
     "directory-view": ["FM-VIEW-MANIFEST", "FM-VIEW-PARTIAL"],
     "navigate-within-root": ["FM-NAV-CHILD", "FM-NAV-PARENT", "FM-NAV-ESCAPE"],
     "refresh-external-change": ["FM-REFRESH-EXTERNAL", "FM-REFRESH-STALE"],
@@ -72,6 +72,7 @@
   "acceptance_rows": {
     "FM-ROOT-SELECT": { "capability": "choose-root", "polarity": "positive", "action": "select the pinned real directory through the GUI root picker", "oracle": "main returns the selected root identity and the exact first snapshot; UI displays the root", "failure_signal": "wrong root, missing snapshot, hidden root identity or renderer-supplied absolute path" },
     "FM-ROOT-CANCEL": { "capability": "choose-root", "polarity": "attack", "action": "cancel the GUI root picker without choosing a directory", "oracle": "result is cancelled rather than refused; previous root and snapshot remain unchanged", "failure_signal": "cancellation becomes refusal/success, clears the current root or advances the snapshot" },
+    "FM-ROOT-FAIL": { "capability": "choose-root", "polarity": "attack", "action": "run dynamic subject root-open-failure after a prior root is current: choose a separately proven ordinary non-reparse directory whose admitted initial snapshot read alone is fault-injected", "oracle": "result is typed failed; the prior root, snapshot and generation remain exact; no snapshot for the new root is fabricated; after cleanup the same new root passes a normal accepted control", "failure_signal": "failure collapses into refused/cancelled, the new root replaces the prior root, generation advances, a fabricated snapshot appears, precondition is unproven, or the normal control fails" },
     "FM-ROOT-REFUSE": { "capability": "choose-root", "polarity": "attack", "action": "make the picker adapter return a regular file path and a missing directory path", "oracle": "each structurally invalid selection is refused and the previous root and snapshot remain unchanged", "failure_signal": "a file or missing directory becomes the active root, cancellation is conflated with refusal, or the snapshot advances" },
     "FM-ROOT-REPARSE": { "capability": "choose-root", "polarity": "attack", "action": "offer a selected root that is itself a reparse point", "oracle": "the root is refused by typed code", "failure_signal": "the product traverses the reparse root or reports generic success" },
     "FM-VIEW-MANIFEST": { "capability": "directory-view", "polarity": "positive", "action": "render the pinned root and child snapshots", "oracle": "independent manifest comparison covers names, kinds and regular-file byte lengths", "failure_signal": "missing, invented or mis-typed entry, or file size derived from renderer text" },
@@ -354,6 +355,17 @@
         "expected": "one byte-identical new snapshot is published at previous generation plus one and no per-entry mutation is reported",
         "cleanup": "no filesystem cleanup; re-run oracle and prove the fixture manifest stayed identical",
         "coverage_label": "packaged_gui_native_filesystem",
+        "precondition_failure": "DID_NOT_APPLY_acceptance_failure"
+      },
+      {
+        "id": "root-open-failure",
+        "paths": ["."],
+        "operation": "with the pinned root A already current, use the labeled picker path to select a sibling ordinary directory root-B-${run_id}; the acceptance-owned main-process adapter admits B and fails only B's first snapshot read with typed code root_snapshot_read_failed",
+        "precondition": "root A has a current snapshot; root-B-${run_id} exists, is an ordinary non-reparse directory and is independently enumerable; the adapter is inactive for A and armed for exactly one B initial-snapshot read",
+        "precondition_proof": "independent lstat/canonical/enumeration controls prove B is a valid ordinary root and the adapter log proves one pending B-only read failure before picker confirmation",
+        "expected": "root-selection result is failed with root_snapshot_read_failed; A remains selected with byte-identical snapshot and generation; no B snapshot is published or fabricated",
+        "cleanup": "disarm the adapter in finally, select B again through the same labeled picker and require an accepted normal snapshot, explicitly reselect A, then remove only root-B-${run_id}",
+        "coverage_label": "fault_injected_initial_snapshot_after_valid_root",
         "precondition_failure": "DID_NOT_APPLY_acceptance_failure"
       },
       {
