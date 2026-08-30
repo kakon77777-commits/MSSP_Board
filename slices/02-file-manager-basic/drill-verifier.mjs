@@ -87,6 +87,16 @@ const drills = [
     }),
   },
   {
+    label: "reduce snapshot-unavailable system row to one character",
+    expect: "system acceptance",
+    apply: mutateJson((d) => {
+      if (d.system_acceptance_rows?.["FM-SYS-SNAPSHOT-UNAVAILABLE"] === undefined
+          || d.system_acceptance_rows["FM-SYS-SNAPSHOT-UNAVAILABLE"] === "x") return false;
+      d.system_acceptance_rows["FM-SYS-SNAPSHOT-UNAVAILABLE"] = "x";
+      return true;
+    }),
+  },
+  {
     label: "add an escaped duplicate JSON key",
     expect: "duplicate JSON key",
     apply: mutateText(
@@ -144,6 +154,16 @@ const drills = [
     }),
   },
   {
+    label: "leave dynamic attack subjects as IDs only",
+    expect: "dynamic subject",
+    apply: mutateJson((d) => {
+      const subjects = d.fixture_contract?.dynamic_subjects;
+      if (!Array.isArray(subjects) || subjects.length === 0) return false;
+      d.fixture_contract.dynamic_subjects = subjects.map(({ id }) => ({ id }));
+      return true;
+    }),
+  },
+  {
     label: "move deferred default-open into the denominator",
     expect: "active denominator",
     apply: mutateJson((d) => {
@@ -186,6 +206,18 @@ const drills = [
     }),
   },
   {
+    label: "replace rename conflict with invalid-name refusal",
+    expect: "rename conflict",
+    apply: mutateJson((d) => {
+      const row = d.acceptance_rows?.["FM-RENAME-CONFLICT"];
+      if (!row) return false;
+      row.action = "rename to bad/name";
+      row.oracle = "request is refused as an invalid single-segment name";
+      row.failure_signal = "invalid name is accepted";
+      return true;
+    }),
+  },
+  {
     label: "make unavailable snapshot untyped",
     expect: "unavailable snapshot",
     apply: mutateJson((d) => {
@@ -224,6 +256,16 @@ const drills = [
       if (!authority || authority.cross_device_move
           !== "unsupported_not_an_acceptance_subject") return false;
       authority.cross_device_move = "negative_acceptance_subject";
+      return true;
+    }),
+  },
+  {
+    label: "replace ordinary root policy with an acceptance-only allowlist",
+    expect: "root selection policy",
+    apply: mutateJson((d) => {
+      if (d.root_scope?.selection_policy
+          !== "any_user_selected_existing_non_reparse_directory") return false;
+      d.root_scope.selection_policy = "pinned_acceptance_root_only";
       return true;
     }),
   },
@@ -274,6 +316,23 @@ const drills = [
       const entry = d.fixture_contract?.entries?.find((x) => x.kind === "file");
       if (!entry || typeof entry.sha256 !== "string") return false;
       entry.sha256 = "0".repeat(64);
+      return true;
+    }),
+  },
+  {
+    label: "remove pinned copy and move conflict sentinels",
+    expect: "conflict fixture",
+    apply: mutateJson((d) => {
+      const required = [
+        "rename-conflict.txt",
+        "dest-copy-conflict/copy-file.bin",
+        "dest-move-conflict/move-file.txt",
+      ];
+      const entries = d.fixture_contract?.entries;
+      if (!Array.isArray(entries) || !required.every((name) => entries.some((x) => x.path === name))) {
+        return false;
+      }
+      d.fixture_contract.entries = entries.filter((entry) => !required.includes(entry.path));
       return true;
     }),
   },

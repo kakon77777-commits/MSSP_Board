@@ -15,7 +15,7 @@ One selected root is always visible; changing it is explicit; navigation above i
 
 | Capability | Acceptance rows |
 |---|---:|
-| `choose-root` | 3 |
+| `choose-root` | 4 |
 | `directory-view` | 2 |
 | `navigate-within-root` | 3 |
 | `refresh-external-change` | 2 |
@@ -26,7 +26,7 @@ One selected root is always visible; changing it is explicit; navigation above i
 | `move-entries` | 4 |
 | `trash-entries` | 3 |
 
-Total: **10 capabilities / 28 independently named rows**.
+Total: **10 capabilities / 29 independently named rows**.
 
 Path authority, snapshot identity, result unions and error projection are cross-cutting contracts, not extra denominator items.
 
@@ -79,7 +79,7 @@ Reparse entries may be displayed, but a reparse root, traversal through a repars
 
 ## Fixtures and action shape
 
-12 pinned directories, 13 pinned files, 137 payload bytes. Payload hex and SHA-256 are owned by independent acceptance, not derived by the product.
+13 pinned directories, 17 pinned files, 205 payload bytes. Payload hex and SHA-256 are owned by independent acceptance, not derived by the product.
 
 - `copy-directory-tree`: one_gui_batch_command; subject copy-dir exact manifest subtree; stop when overall result and snapshot state are rendered.
 - `move-directory-tree`: one_gui_batch_command; subject move-dir exact manifest subtree; stop when overall result and snapshot state are rendered.

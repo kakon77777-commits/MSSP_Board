@@ -24,6 +24,11 @@ const DENOMINATOR = [
   "move-entries", "trash-entries",
 ];
 const ROW_FIELDS = ["capability", "polarity", "action", "oracle", "failure_signal"];
+const SYSTEM_ROW_FIELDS = ["action", "oracle", "failure_signal", "covered_by", "dynamic_subjects"];
+const DYNAMIC_SUBJECT_FIELDS = [
+  "id", "paths", "operation", "precondition", "precondition_proof",
+  "expected", "cleanup", "coverage_label",
+];
 const SYSTEM_ROWS = [
   "FM-SYS-RESULT-UNION", "FM-SYS-SNAPSHOT-SEQUENCE", "FM-SYS-SNAPSHOT-UNAVAILABLE",
   "FM-SYS-ENTRY-ID-SCOPE", "FM-SYS-PATH-AUTHORITY", "FM-SYS-REPARSE",
@@ -31,6 +36,7 @@ const SYSTEM_ROWS = [
   "FM-SYS-RELAUNCH-RESELECT",
 ];
 const REQUIRED_SPECIAL_ROWS = {
+  "choose-root": ["FM-ROOT-CANCEL"],
   "entry-selection": ["FM-SELECT-SINGLE", "FM-SELECT-MULTI"],
   "copy-entries": ["FM-COPY-FILE", "FM-COPY-DIRECTORY"],
   "move-entries": ["FM-MOVE-FILE", "FM-MOVE-DIRECTORY"],
@@ -40,8 +46,16 @@ const REQUIRED_FIXTURES = [
   "nav", "nav/child.txt", "copy-file.bin", "copy-dir", "copy-dir/nested/a.txt",
   "copy-dir/nested/deeper/b.bin", "copy-dir/empty", "move-file.txt", "move-dir",
   "move-dir/nested.txt", "trash-file.txt", "trash-dir", "trash-dir/nested.txt",
-  "partial/ok.bin", "partial/locked.bin", "conflicts/existing-name.txt",
-  "refresh/base.txt", "rename-me.txt", "dest-copy", "dest-move",
+  "partial/ok.bin", "partial/locked.bin", "partial/unreadable.bin",
+  "partial/trash-locked.txt", "refresh/base.txt", "rename-me.txt",
+  "rename-conflict.txt", "dest-copy", "dest-copy-conflict",
+  "dest-copy-conflict/copy-file.bin", "dest-move", "dest-move-conflict",
+  "dest-move-conflict/move-file.txt",
+];
+const DYNAMIC_SUBJECT_IDS = [
+  "escape-junction", "locked-member", "unreadable-entry", "refresh-change",
+  "trash-failure", "post-operation-snapshot-failure", "unchanged-refresh",
+  "relaunch-reselect",
 ];
 
 const sameArray = (actual, expected) => Array.isArray(actual)
@@ -163,7 +177,11 @@ export function verify(root = ROOT) {
     && document.root_scope?.root_is_always_visible === true
     && document.root_scope?.change_root_is_explicit === true
     && document.root_scope?.remembered_root_required === false
+    && document.root_scope?.selection_policy
+      === "any_user_selected_existing_non_reparse_directory"
     && document.root_scope?.navigate_above_root === "refused");
+  check("root selection policy", document.root_scope?.selection_policy
+    === "any_user_selected_existing_non_reparse_directory");
 
   const workflow = document.primary_workflow;
   check("primary workflow", Array.isArray(workflow) && workflow.length === 13);
@@ -222,12 +240,40 @@ export function verify(root = ROOT) {
     check(`${capability} keeps distinct file/directory or single/multi rows`,
       ids.every((id) => found.includes(id)), ids.filter((id) => !found.includes(id)).join(", "));
   }
+  check("rename conflict has a real single-segment sentinel",
+    rows?.["FM-RENAME-CONFLICT"]?.action?.includes("rename-me.txt")
+    && rows?.["FM-RENAME-CONFLICT"]?.action?.includes("rename-conflict.txt")
+    && !rows?.["FM-RENAME-CONFLICT"]?.action?.includes("conflicts/"));
+  check("copy conflict has different-byte pinned destination",
+    rows?.["FM-COPY-CONFLICT"]?.action?.includes("copy-file.bin")
+    && rows?.["FM-COPY-CONFLICT"]?.action?.includes("dest-copy-conflict/copy-file.bin"));
+  check("move conflict has different-byte pinned destination",
+    rows?.["FM-MOVE-CONFLICT"]?.action?.includes("move-file.txt")
+    && rows?.["FM-MOVE-CONFLICT"]?.action?.includes("dest-move-conflict/move-file.txt"));
+  check("root refusal names only defined invalid subjects",
+    rows?.["FM-ROOT-REFUSE"]?.action?.includes("regular file path")
+    && rows?.["FM-ROOT-REFUSE"]?.action?.includes("missing directory path")
+    && !rows?.["FM-ROOT-REFUSE"]?.action?.includes("disallowed root"));
+  check("navigation escape separates malformed payload from real junction ID",
+    rows?.["FM-NAV-ESCAPE"]?.action?.includes("malformed IPC")
+    && rows?.["FM-NAV-ESCAPE"]?.action?.includes("escape-junction")
+    && rows?.["FM-NAV-ESCAPE"]?.oracle?.includes("distinct typed codes"));
   check("capability acceptance rule", nonempty(document.capability_acceptance_rule));
 
   check("system acceptance exact IDs", exactKeys(document.system_acceptance_rows, SYSTEM_ROWS));
+  const systemDynamicRefs = [];
   if (document.system_acceptance_rows) {
-    for (const [id, statement] of Object.entries(document.system_acceptance_rows)) {
-      check(`system acceptance ${id}`, nonempty(statement));
+    for (const [id, row] of Object.entries(document.system_acceptance_rows)) {
+      check(`system acceptance ${id} runnable fields`, exactKeys(row, SYSTEM_ROW_FIELDS));
+      if (row === null || typeof row !== "object" || Array.isArray(row)) continue;
+      for (const field of ["action", "oracle", "failure_signal"]) {
+        check(`system acceptance ${id} ${field}`, nonempty(row[field]));
+      }
+      check(`system acceptance ${id} covered_by`, Array.isArray(row.covered_by)
+        && row.covered_by.every((acceptanceId) => rows?.[acceptanceId] !== undefined));
+      check(`system acceptance ${id} dynamic_subjects`, Array.isArray(row.dynamic_subjects)
+        && row.dynamic_subjects.every(nonempty));
+      if (Array.isArray(row.dynamic_subjects)) systemDynamicRefs.push(...row.dynamic_subjects);
     }
   }
 
@@ -246,6 +292,13 @@ export function verify(root = ROOT) {
     ["accepted", "partial", "refused", "failed"]));
   check("per-entry statuses", sameArray(contracts?.operation_result?.per_entry_statuses,
     ["accepted", "refused", "failed"]));
+  check("root selection statuses", sameArray(
+    contracts?.operation_result?.root_selection_statuses,
+    ["accepted", "cancelled", "refused", "failed"]));
+  check("root selection status meanings", exactKeys(
+    contracts?.operation_result?.root_selection_meanings,
+    ["accepted", "cancelled", "refused", "failed"])
+    && Object.values(contracts.operation_result.root_selection_meanings).every(nonempty));
   check("per-entry status meanings", exactKeys(contracts?.operation_result?.per_entry_meanings,
     ["accepted", "refused", "failed"])
     && Object.values(contracts.operation_result.per_entry_meanings).every(nonempty));
@@ -329,9 +382,70 @@ export function verify(root = ROOT) {
   }
   check("fixture required subjects", REQUIRED_FIXTURES.every((name) => fixturePaths.has(name)),
     REQUIRED_FIXTURES.filter((name) => !fixturePaths.has(name)).join(", "));
-  check("fixture dynamic attacks", Array.isArray(fixture?.dynamic_subjects)
-    && ["escape-junction", "locked-member", "unreadable-entry"]
-      .every((id) => fixture.dynamic_subjects.some((x) => x?.id === id)));
+  const fixtureByPath = new Map((fixture?.entries ?? []).map((entry) => [entry?.path, entry]));
+  const conflictPairs = [
+    ["rename-me.txt", "rename-conflict.txt"],
+    ["copy-file.bin", "dest-copy-conflict/copy-file.bin"],
+    ["move-file.txt", "dest-move-conflict/move-file.txt"],
+  ];
+  check("conflict fixture sentinels are pinned and different-byte", conflictPairs.every(([source, target]) => {
+    const sourceHash = fixtureByPath.get(source)?.sha256;
+    const targetHash = fixtureByPath.get(target)?.sha256;
+    return /^[0-9a-f]{64}$/.test(sourceHash ?? "")
+      && /^[0-9a-f]{64}$/.test(targetHash ?? "")
+      && sourceHash !== targetHash;
+  }));
+  const dynamicSubjects = Array.isArray(fixture?.dynamic_subjects) ? fixture.dynamic_subjects : [];
+  const dynamicIds = dynamicSubjects.map((subject) => subject?.id);
+  check("fixture dynamic subject IDs", sameArray(dynamicIds, DYNAMIC_SUBJECT_IDS));
+  check("fixture dynamic subject IDs unique", new Set(dynamicIds).size === dynamicIds.length);
+  for (const subject of dynamicSubjects) {
+    const scope = `dynamic subject ${subject?.id}`;
+    check(`${scope} exact runnable fields`, exactKeys(subject, DYNAMIC_SUBJECT_FIELDS));
+    if (subject === null || typeof subject !== "object" || Array.isArray(subject)) continue;
+    check(`${scope} paths`, Array.isArray(subject.paths) && subject.paths.length > 0
+      && subject.paths.every((value) => nonempty(value)
+        && (value === "." || (!path.isAbsolute(value) && !value.includes("\\")
+          && !value.split("/").some((part) => ["", ".", ".."].includes(part))))));
+    for (const field of [
+      "operation", "precondition", "precondition_proof", "expected", "cleanup", "coverage_label",
+    ]) check(`${scope} ${field}`, nonempty(subject[field]));
+  }
+  check("system acceptance dynamic subjects resolve",
+    systemDynamicRefs.every((id) => dynamicIds.includes(id)),
+    systemDynamicRefs.filter((id) => !dynamicIds.includes(id)).join(", "));
+  const byDynamicId = new Map(dynamicSubjects.map((subject) => [subject?.id, subject]));
+  check("unreadable dynamic subject exact binding",
+    sameArray(byDynamicId.get("unreadable-entry")?.paths,
+      ["partial/unreadable.bin", "dest-copy/unreadable.bin"])
+    && byDynamicId.get("unreadable-entry")?.precondition_proof?.includes("independent read/stat control")
+    && byDynamicId.get("unreadable-entry")?.cleanup?.includes("restore the saved ACL"));
+  check("locked dynamic subject exact binding",
+    sameArray(byDynamicId.get("locked-member")?.paths,
+      ["partial/locked.bin", "dest-move/locked.bin"])
+    && byDynamicId.get("locked-member")?.precondition_proof?.includes("sharing violation")
+    && byDynamicId.get("locked-member")?.cleanup?.includes("recorded helper handle/process"));
+  check("refresh dynamic subject exact binding",
+    sameArray(byDynamicId.get("refresh-change")?.paths,
+      ["refresh/base.txt", "refresh/external-added.bin"])
+    && byDynamicId.get("refresh-change")?.operation?.includes("a1b2c3d4")
+    && byDynamicId.get("refresh-change")?.expected?.includes(
+      "97ed8e55519b020c4d9aceb40e0d3bc7eaa22d080d49592bf21206cb697c8a58"));
+  check("trash failure dynamic subject exact binding",
+    sameArray(byDynamicId.get("trash-failure")?.paths, ["partial/trash-locked.txt"])
+    && byDynamicId.get("trash-failure")?.precondition_proof?.includes("control native recycle attempt")
+    && byDynamicId.get("trash-failure")?.cleanup?.includes("recorded helper handle/process"));
+  check("snapshot unavailable dynamic subject exact binding",
+    sameArray(byDynamicId.get("post-operation-snapshot-failure")?.paths,
+      ["partial/ok.bin", "dest-copy/post-scan.bin"])
+    && byDynamicId.get("post-operation-snapshot-failure")?.operation?.includes("snapshot_read_failed")
+    && byDynamicId.get("post-operation-snapshot-failure")?.expected?.includes("snapshot state is unavailable")
+    && byDynamicId.get("post-operation-snapshot-failure")?.cleanup?.includes("disarm the adapter"));
+  check("relaunch dynamic subject exact binding",
+    sameArray(byDynamicId.get("relaunch-reselect")?.paths, ["."])
+    && byDynamicId.get("relaunch-reselect")?.precondition_proof?.includes("B differs from A")
+    && byDynamicId.get("relaunch-reselect")?.expected?.includes("no root is active before explicit selection")
+    && byDynamicId.get("relaunch-reselect")?.cleanup?.includes("exact process tree"));
 
   check("performance is NotMeasured", document.performance === "NotMeasured");
   check("timing policy", document.timing_policy?.purpose?.includes("hang detection")

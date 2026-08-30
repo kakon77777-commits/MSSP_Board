@@ -26,6 +26,7 @@
     "root_is_always_visible": true,
     "change_root_is_explicit": true,
     "remembered_root_required": false,
+    "selection_policy": "any_user_selected_existing_non_reparse_directory",
     "navigate_above_root": "refused"
   },
   "primary_workflow": [
@@ -56,7 +57,7 @@
     "trash-entries"
   ],
   "capability_acceptance_map": {
-    "choose-root": ["FM-ROOT-SELECT", "FM-ROOT-REFUSE", "FM-ROOT-REPARSE"],
+    "choose-root": ["FM-ROOT-SELECT", "FM-ROOT-CANCEL", "FM-ROOT-REFUSE", "FM-ROOT-REPARSE"],
     "directory-view": ["FM-VIEW-MANIFEST", "FM-VIEW-PARTIAL"],
     "navigate-within-root": ["FM-NAV-CHILD", "FM-NAV-PARENT", "FM-NAV-ESCAPE"],
     "refresh-external-change": ["FM-REFRESH-EXTERNAL", "FM-REFRESH-STALE"],
@@ -70,13 +71,14 @@
   "capability_acceptance_rule": "Every active capability owns at least one positive and one independently failable attack row. Single and multiple selection, and file and directory-tree operations, remain distinct rows without inflating the capability count. No acceptance ID may be shared by two capabilities.",
   "acceptance_rows": {
     "FM-ROOT-SELECT": { "capability": "choose-root", "polarity": "positive", "action": "select the pinned real directory through the GUI root picker", "oracle": "main returns the selected root identity and the exact first snapshot; UI displays the root", "failure_signal": "wrong root, missing snapshot, hidden root identity or renderer-supplied absolute path" },
-    "FM-ROOT-REFUSE": { "capability": "choose-root", "polarity": "attack", "action": "offer a file path, a missing directory and a disallowed root", "oracle": "each request is refused and the previous root and snapshot remain unchanged", "failure_signal": "any invalid subject becomes the active root or advances the snapshot" },
+    "FM-ROOT-CANCEL": { "capability": "choose-root", "polarity": "attack", "action": "cancel the GUI root picker without choosing a directory", "oracle": "result is cancelled rather than refused; previous root and snapshot remain unchanged", "failure_signal": "cancellation becomes refusal/success, clears the current root or advances the snapshot" },
+    "FM-ROOT-REFUSE": { "capability": "choose-root", "polarity": "attack", "action": "make the picker adapter return a regular file path and a missing directory path", "oracle": "each structurally invalid selection is refused and the previous root and snapshot remain unchanged", "failure_signal": "a file or missing directory becomes the active root, cancellation is conflated with refusal, or the snapshot advances" },
     "FM-ROOT-REPARSE": { "capability": "choose-root", "polarity": "attack", "action": "offer a selected root that is itself a reparse point", "oracle": "the root is refused by typed code", "failure_signal": "the product traverses the reparse root or reports generic success" },
     "FM-VIEW-MANIFEST": { "capability": "directory-view", "polarity": "positive", "action": "render the pinned root and child snapshots", "oracle": "independent manifest comparison covers names, kinds and regular-file byte lengths", "failure_signal": "missing, invented or mis-typed entry, or file size derived from renderer text" },
     "FM-VIEW-PARTIAL": { "capability": "directory-view", "polarity": "attack", "action": "make one controlled entry unreadable after proving the fixture precondition", "oracle": "view completeness is partial with a typed observation error and is never rendered as an empty complete directory", "failure_signal": "false empty, complete=true, silent omission or an attack that did not establish unreadability" },
     "FM-NAV-CHILD": { "capability": "navigate-within-root", "polarity": "positive", "action": "navigate from the selected root into nav", "oracle": "a new exact nav snapshot is published", "failure_signal": "wrong directory, reused generation or path supplied by renderer" },
     "FM-NAV-PARENT": { "capability": "navigate-within-root", "polarity": "positive", "action": "navigate from nav back to the selected root", "oracle": "a new exact root snapshot is published and navigation stops at that root", "failure_signal": "wrong parent, no new snapshot or navigation above root" },
-    "FM-NAV-ESCAPE": { "capability": "navigate-within-root", "polarity": "attack", "action": "try parent escape, absolute alias, ADS, reserved name, NUL and a created junction", "oracle": "each is refused before traversal and the current snapshot remains unchanged", "failure_signal": "any escape is followed, normalized into permission, or produces a new snapshot" },
+    "FM-NAV-ESCAPE": { "capability": "navigate-within-root", "polarity": "attack", "action": "first submit malformed IPC values (`..`, absolute path, ADS, reserved name and NUL) where an opaque entry_id is required; separately submit the real snapshot-scoped entry_id of dynamic subject escape-junction", "oracle": "malformed payloads fail request-schema validation without path resolution; the well-formed junction entry_id reaches reparse policy and is refused before traversal; both return distinct typed codes and the snapshot remains unchanged", "failure_signal": "malformed text reaches path resolution, the junction is followed, both subcases collapse to one untyped error, or a new snapshot is published" },
     "FM-REFRESH-EXTERNAL": { "capability": "refresh-external-change", "polarity": "positive", "action": "create and remove pinned entries outside the app, then invoke one GUI refresh", "oracle": "one new snapshot is published and exactly reflects both external changes", "failure_signal": "stale tree, more than one generation increment or fake live-sync before refresh" },
     "FM-REFRESH-STALE": { "capability": "refresh-external-change", "polarity": "attack", "action": "retain a pre-refresh entry ID, replace the same-name file externally, refresh, then submit the old ID", "oracle": "the old ID is refused and the replacement entry is untouched", "failure_signal": "same-name substitution or an old ID mutates the new entry" },
     "FM-SELECT-SINGLE": { "capability": "entry-selection", "polarity": "positive", "action": "select exactly one current entry ID", "oracle": "UI and main agree on that one ID and generation", "failure_signal": "name-only selection, extra selected entry or generation mismatch" },
@@ -85,30 +87,90 @@
     "FM-CREATE-DIRECTORY": { "capability": "create-directory", "polarity": "positive", "action": "create created-folder beneath the current directory", "oracle": "one directory appears and one new snapshot is published", "failure_signal": "wrong kind, wrong parent, duplicate creation or missing snapshot" },
     "FM-CREATE-REFUSE": { "capability": "create-directory", "polarity": "attack", "action": "try empty, duplicate, reserved, ADS, separator and NUL-containing names", "oracle": "each is refused, creates nothing and retains the snapshot", "failure_signal": "normalization into a different name, partial creation or generation advance" },
     "FM-RENAME": { "capability": "rename-entry", "polarity": "positive", "action": "rename rename-me.txt to renamed.txt using its current entry ID", "oracle": "payload hash is unchanged, old path absent, new path present and one new snapshot published", "failure_signal": "payload change, duplicate paths, wrong entry or wrong generation" },
-    "FM-RENAME-CONFLICT": { "capability": "rename-entry", "polarity": "attack", "action": "rename to conflicts/existing-name.txt and submit a stale source ID", "oracle": "both refuse without overwrite and retain the snapshot", "failure_signal": "existing destination changes, stale source substitutes by name or snapshot advances" },
+    "FM-RENAME-CONFLICT": { "capability": "rename-entry", "polarity": "attack", "action": "rename root entry rename-me.txt to the single-segment name rename-conflict.txt, which already exists with a different pinned payload; separately submit a stale source ID", "oracle": "both requests are refused; rename-me.txt and rename-conflict.txt retain their exact pre-operation bytes and the snapshot remains unchanged", "failure_signal": "invalid-name refusal substitutes for conflict checking, either payload changes, source disappears, auto-rename occurs, stale source substitutes by name or generation advances" },
     "FM-COPY-FILE": { "capability": "copy-entries", "polarity": "positive", "action": "copy copy-file.bin into dest-copy with one GUI batch command", "oracle": "source and destination payloads are byte-identical and one new snapshot is published", "failure_signal": "text re-encoding, source removal, extra mutation or test-side copying" },
     "FM-COPY-DIRECTORY": { "capability": "copy-entries", "polarity": "positive", "action": "copy the entire copy-dir tree into dest-copy with one GUI batch command", "oracle": "independent tree-and-byte oracle matches every nested file and empty directory", "failure_signal": "flattened tree, omitted empty directory, per-entry test loop or payload drift" },
     "FM-COPY-PARTIAL": { "capability": "copy-entries", "polarity": "attack", "action": "copy one valid and one controlled unreadable member in one multi-entry request", "oracle": "overall status is partial, every requested ID has an outcome, the valid copy is exact and the failed destination is absent", "failure_signal": "whole-batch success, whole-batch fiction, missing member outcome or silent partial data" },
-    "FM-COPY-CONFLICT": { "capability": "copy-entries", "polarity": "attack", "action": "copy to an existing destination", "oracle": "request is refused without overwrite and the snapshot is unchanged", "failure_signal": "silent overwrite, auto-rename or generation advance" },
+    "FM-COPY-CONFLICT": { "capability": "copy-entries", "polarity": "attack", "action": "copy copy-file.bin into dest-copy-conflict where dest-copy-conflict/copy-file.bin already exists with a different pinned payload", "oracle": "request is refused; both source and sentinel retain exact pre-operation hashes and the snapshot is unchanged", "failure_signal": "silent overwrite, identical-byte laundering, auto-rename or generation advance" },
     "FM-MOVE-FILE": { "capability": "move-entries", "polarity": "positive", "action": "move move-file.txt into dest-move with one GUI batch command", "oracle": "destination hash matches, source is absent and one new snapshot is published", "failure_signal": "copy-with-source-left, payload drift or more than one published snapshot" },
     "FM-MOVE-DIRECTORY": { "capability": "move-entries", "polarity": "positive", "action": "move the entire move-dir tree into dest-move with one GUI batch command", "oracle": "destination tree is exact, original tree absent and empty/nested structure preserved", "failure_signal": "partial unreported move, flattened tree or test-side per-entry move loop" },
     "FM-MOVE-PARTIAL": { "capability": "move-entries", "polarity": "attack", "action": "move one valid and one controlled locked member in one request", "oracle": "overall status is partial, successful source is absent, failed source remains, and every requested ID has an outcome", "failure_signal": "all-success fiction, rollback fiction, missing member or wrong payload" },
-    "FM-MOVE-CONFLICT": { "capability": "move-entries", "polarity": "attack", "action": "move to an existing destination and submit a stale destination-directory entry ID", "oracle": "both are refused without overwrite, substitution or mutation", "failure_signal": "silent overwrite, auto-rename, stale-ID substitution or generation advance" },
+    "FM-MOVE-CONFLICT": { "capability": "move-entries", "polarity": "attack", "action": "move move-file.txt into dest-move-conflict where dest-move-conflict/move-file.txt already exists with a different pinned payload; separately submit a stale destination-directory entry ID", "oracle": "both requests are refused; source and sentinel retain exact pre-operation hashes and the snapshot remains unchanged", "failure_signal": "silent overwrite, source removal, identical-byte laundering, auto-rename, stale-ID substitution or generation advance" },
     "FM-TRASH-FILE": { "capability": "trash-entries", "polarity": "positive", "action": "send trash-file.txt through the native Windows recycle operation", "oracle": "source leaves the root and independent native evidence identifies a recoverable recycle operation", "failure_signal": "permanent deletion, source disappearance alone or stubbed evidence reported as native" },
     "FM-TRASH-DIRECTORY": { "capability": "trash-entries", "polarity": "positive", "action": "send the disposable trash-dir tree through the native Windows recycle operation", "oracle": "whole tree leaves the root and native recoverability evidence is recorded", "failure_signal": "permanent recursive delete, partial silent deletion or file-only implementation" },
     "FM-TRASH-REFUSE": { "capability": "trash-entries", "polarity": "attack", "action": "submit stale, out-of-root and reparse entry IDs and force one controlled native failure", "oracle": "every refusal/failure is typed; zero-mutation results retain the snapshot; no permanent-delete fallback exists", "failure_signal": "target disappears, fallback deletion, wrong status or fabricated recovery evidence" }
   },
   "system_acceptance_rows": {
-    "FM-SYS-RESULT-UNION": "exercise accepted, partial, refused and failed as four distinguishable overall statuses; refusal is policy/precondition and failure is admitted I/O with zero successes",
-    "FM-SYS-SNAPSHOT-SEQUENCE": "every published snapshot advances generation exactly once regardless of refresh or mutation; generation is never interpreted as a mutation count",
-    "FM-SYS-SNAPSHOT-UNAVAILABLE": "after at least one mutation succeeds, force the post-operation scan to fail and require snapshot state unavailable with typed code and last published generation rather than a fabricated current or unchanged snapshot",
-    "FM-SYS-ENTRY-ID-SCOPE": "a new snapshot invalidates every prior opaque entry ID and name equality never revives one",
-    "FM-SYS-PATH-AUTHORITY": "renderer never supplies an absolute or relative path or filesystem handle; main resolves root, entry IDs, destinations and single-segment names",
-    "FM-SYS-REPARSE": "reparse entries may be shown but selected reparse roots, traversal and mutation are refused in v0; a resolved string is not cited as race-safe confinement",
-    "FM-SYS-NO-OVERWRITE": "rename, copy and move never silently overwrite or auto-rename a destination",
-    "FM-SYS-ACTION-SHAPE": "copy/move caps measure one specified GUI batch command over the pinned fixture subject, never a test-side per-entry loop or substituted injection route",
-    "FM-SYS-NO-PERMANENT-DELETE": "no renderer, preload or main route exposes permanent delete in v0",
-    "FM-SYS-RELAUNCH-RESELECT": "relaunch does not claim remembered-root persistence; acceptance explicitly selects the pinned root again"
+    "FM-SYS-RESULT-UNION": {
+      "action": "drive FM-COPY-FILE, FM-COPY-PARTIAL and FM-COPY-CONFLICT, then run dynamic subject locked-member as a single-entry move so no member succeeds",
+      "oracle": "the four results are respectively accepted, partial, refused and failed; every requested entry ID has exactly one typed outcome",
+      "failure_signal": "any two overall statuses collapse, refusal is reported for admitted I/O failure, or a requested ID has no outcome",
+      "covered_by": ["FM-COPY-FILE", "FM-COPY-PARTIAL", "FM-COPY-CONFLICT"],
+      "dynamic_subjects": ["locked-member"]
+    },
+    "FM-SYS-SNAPSHOT-SEQUENCE": {
+      "action": "publish the initial root snapshot, run dynamic subject unchanged-refresh, run FM-REFRESH-EXTERNAL, then run FM-COPY-FILE",
+      "oracle": "each completed observation publishes exactly one next generation, including the byte-identical refresh; per-entry status, not generation, says whether mutation occurred",
+      "failure_signal": "generation skips/reuses, unchanged refresh publishes nothing, one operation publishes multiple generations, or client infers mutation from generation",
+      "covered_by": ["FM-REFRESH-EXTERNAL", "FM-COPY-FILE"],
+      "dynamic_subjects": ["unchanged-refresh"]
+    },
+    "FM-SYS-SNAPSHOT-UNAVAILABLE": {
+      "action": "run dynamic subject post-operation-snapshot-failure: perform one real GUI copy of partial/ok.bin to dest-copy/post-scan.bin, then make only the immediately following main-process scan return snapshot_read_failed",
+      "oracle": "the entry outcome and overall status report the successful copy, snapshot.state is unavailable, last_published_generation is unchanged and a typed snapshot_read_failed code is present; the external oracle sees exact destination bytes",
+      "failure_signal": "current/unchanged snapshot is fabricated, mutation is hidden, destination bytes are wrong, generation advances without a published snapshot, or the failure is untyped",
+      "covered_by": [],
+      "dynamic_subjects": ["post-operation-snapshot-failure"]
+    },
+    "FM-SYS-ENTRY-ID-SCOPE": {
+      "action": "after FM-REFRESH-EXTERNAL publishes a new snapshot, resubmit pre-refresh IDs through FM-REFRESH-STALE and FM-SELECT-STALE",
+      "oracle": "every old ID is refused before mutation and same-name entries in the new snapshot remain untouched",
+      "failure_signal": "an old ID revives, name equality substitutes identity, or any mutation occurs",
+      "covered_by": ["FM-REFRESH-STALE", "FM-SELECT-STALE"],
+      "dynamic_subjects": ["refresh-change"]
+    },
+    "FM-SYS-PATH-AUTHORITY": {
+      "action": "run FM-NAV-ESCAPE and FM-CREATE-REFUSE while recording the renderer/preload request payloads",
+      "oracle": "renderer payloads contain only snapshot generation, opaque entry IDs and validated single-segment names; no path or filesystem handle crosses the boundary",
+      "failure_signal": "absolute/relative path or handle reaches renderer, malformed entry_id reaches path resolution, or renderer performs containment",
+      "covered_by": ["FM-NAV-ESCAPE", "FM-CREATE-REFUSE"],
+      "dynamic_subjects": ["escape-junction"]
+    },
+    "FM-SYS-REPARSE": {
+      "action": "list escape-junction, then run FM-ROOT-REPARSE, the junction arm of FM-NAV-ESCAPE and the reparse arm of FM-TRASH-REFUSE",
+      "oracle": "the entry is visibly typed reparse, while selected reparse root, traversal and mutation are refused with typed codes and unchanged snapshot",
+      "failure_signal": "junction is hidden as ordinary directory, followed, mutated, or admitted by resolved-string containment",
+      "covered_by": ["FM-ROOT-REPARSE", "FM-NAV-ESCAPE", "FM-TRASH-REFUSE"],
+      "dynamic_subjects": ["escape-junction"]
+    },
+    "FM-SYS-NO-OVERWRITE": {
+      "action": "run FM-RENAME-CONFLICT, FM-COPY-CONFLICT and FM-MOVE-CONFLICT against their different-byte pinned sentinels",
+      "oracle": "every source and sentinel retains its exact pre-operation hash; no auto-rename occurs and the snapshot is unchanged",
+      "failure_signal": "any sentinel/source changes, disappears or is renamed, even if the final bytes happen to match",
+      "covered_by": ["FM-RENAME-CONFLICT", "FM-COPY-CONFLICT", "FM-MOVE-CONFLICT"],
+      "dynamic_subjects": []
+    },
+    "FM-SYS-ACTION-SHAPE": {
+      "action": "time FM-COPY-DIRECTORY and FM-MOVE-DIRECTORY from one GUI command each over the exact pinned subtrees",
+      "oracle": "instrument records one renderer dispatch and one final result/snapshot per operation; the external oracle validates the whole resulting tree",
+      "failure_signal": "test-side per-entry loop, internal service injection, different fixture, pre-copy/pre-move or cap attached to another action",
+      "covered_by": ["FM-COPY-DIRECTORY", "FM-MOVE-DIRECTORY"],
+      "dynamic_subjects": []
+    },
+    "FM-SYS-NO-PERMANENT-DELETE": {
+      "action": "enumerate renderer/preload/main command surfaces, then run both native trash positives and trash-failure",
+      "oracle": "only recoverable native recycle operation exists; no permanent-delete command or fallback is reachable",
+      "failure_signal": "permanent delete surface exists, fallback executes, or source disappearance alone is called recoverability",
+      "covered_by": ["FM-TRASH-FILE", "FM-TRASH-DIRECTORY", "FM-TRASH-REFUSE"],
+      "dynamic_subjects": ["trash-failure"]
+    },
+    "FM-SYS-RELAUNCH-RESELECT": {
+      "action": "run dynamic subject relaunch-reselect: close packaged PID A gracefully, prove it exited, launch packaged PID B where B differs from A, explicitly select the same pinned root through the labeled picker path and wait for its first snapshot",
+      "oracle": "PID B is new, no root appears before explicit selection, and the selected root publishes a fresh initial snapshot without remembered-root claim",
+      "failure_signal": "same process is reused, remembered root is silently restored, selection is bypassed, or no fresh snapshot is published",
+      "covered_by": [],
+      "dynamic_subjects": ["relaunch-reselect"]
+    }
   },
   "cross_cutting_contracts": {
     "entry_identity": {
@@ -123,6 +185,13 @@
     "operation_result": {
       "overall_statuses": ["accepted", "partial", "refused", "failed"],
       "per_entry_statuses": ["accepted", "refused", "failed"],
+      "root_selection_statuses": ["accepted", "cancelled", "refused", "failed"],
+      "root_selection_meanings": {
+        "accepted": "an existing non-reparse directory becomes the selected root and publishes its first snapshot",
+        "cancelled": "the picker returns no selection and the previous root/snapshot remain unchanged",
+        "refused": "a returned subject is not an existing non-reparse directory and the previous root/snapshot remain unchanged",
+        "failed": "the picker or admitted root-open operation fails operationally without replacing the previous root"
+      },
       "per_entry_meanings": {
         "accepted": "this requested entry mutated successfully",
         "refused": "policy or a precondition rejected this entry before its mutation",
@@ -202,9 +271,86 @@
     "product_may_not_generate_expected_values": true,
     "root_location": "fresh D-drive scratch directory created per run; never a user folder",
     "dynamic_subjects": [
-      { "id": "escape-junction", "precondition": "create a junction inside the root targeting a disposable directory outside it", "did_not_apply": "acceptance failure, not a caught attack" },
-      { "id": "locked-member", "precondition": "hold a process-owned Windows handle that independently proves the intended mutation is denied", "cleanup": "close only that exact handle/process in finally" },
-      { "id": "unreadable-entry", "precondition": "deny enumeration on one disposable child and prove denial before the view action", "cleanup": "restore that exact child ACL in finally" }
+      {
+        "id": "escape-junction",
+        "paths": ["escape-junction"],
+        "operation": "list the junction, then submit its current entry_id to navigate and trash operations",
+        "precondition": "create root/escape-junction as a Windows junction to a sibling disposable directory named escape-target-${run_id} outside the selected root",
+        "precondition_proof": "lstat identifies a reparse point and an independent canonical-target query proves the target is outside the selected root before either attack",
+        "expected": "entry is visibly typed reparse; navigate and trash are refused with distinct typed codes; snapshot and outside target remain unchanged",
+        "cleanup": "remove only root/escape-junction, then remove sibling escape-target-${run_id}; verify the rest of the pinned root still matches its manifest",
+        "coverage_label": "native_windows_junction"
+      },
+      {
+        "id": "locked-member",
+        "paths": ["partial/locked.bin", "dest-move/locked.bin"],
+        "operation": "first move partial/locked.bin alone to prove overall failed; then move partial/ok.bin plus partial/locked.bin in one batch to prove partial",
+        "precondition": "a harness-owned helper opens partial/locked.bin with a Windows share mode that denies the exact move/delete operation",
+        "precondition_proof": "the helper reports its exact PID/handle and a direct control move fails with sharing violation before the product request",
+        "expected": "single-entry result is failed; multi-entry result is partial; locked source hash remains pinned, successful source/destination are exact, and every ID has an outcome",
+        "cleanup": "close only the recorded helper handle/process in finally, remove dest-move/locked.bin if present, and restore partial/ok.bin from pinned payload",
+        "coverage_label": "native_windows_lock"
+      },
+      {
+        "id": "unreadable-entry",
+        "paths": ["partial/unreadable.bin", "dest-copy/unreadable.bin"],
+        "operation": "render the parent view, then copy partial/ok.bin plus partial/unreadable.bin in one batch",
+        "precondition": "save the exact ACL of partial/unreadable.bin, deny the current test identity the read operation used by metadata/copy, and leave sibling partial/ok.bin readable",
+        "precondition_proof": "an independent read/stat control fails for partial/unreadable.bin and succeeds for partial/ok.bin before the product actions",
+        "expected": "view is partial rather than false-empty; copy result is partial; unreadable source hash is unchanged and dest-copy/unreadable.bin is absent",
+        "cleanup": "restore the saved ACL exactly in finally, remove dest-copy/unreadable.bin if present, and verify both pinned source hashes",
+        "coverage_label": "native_windows_acl"
+      },
+      {
+        "id": "refresh-change",
+        "paths": ["refresh/base.txt", "refresh/external-added.bin"],
+        "operation": "outside the app remove refresh/base.txt and create refresh/external-added.bin with payload hex a1b2c3d4, then invoke one GUI refresh",
+        "precondition": "refresh/base.txt has its pinned hash and refresh/external-added.bin is absent in the current snapshot",
+        "precondition_proof": "independent tree-and-byte oracle records the precondition immediately before the external write/remove",
+        "expected": "one new snapshot omits base.txt, includes external-added.bin with 4 bytes and SHA-256 97ed8e55519b020c4d9aceb40e0d3bc7eaa22d080d49592bf21206cb697c8a58, and invalidates every old entry_id",
+        "cleanup": "remove external-added.bin, restore base.txt from pinned payload, invoke no product operation during cleanup, and re-run the independent oracle",
+        "coverage_label": "native_external_filesystem_change"
+      },
+      {
+        "id": "trash-failure",
+        "paths": ["partial/trash-locked.txt"],
+        "operation": "submit the current entry_id of partial/trash-locked.txt to the native recycle operation",
+        "precondition": "a harness-owned helper opens the exact file with delete sharing denied",
+        "precondition_proof": "the helper reports exact PID/handle and a control native recycle attempt fails before the product request",
+        "expected": "overall and per-entry status are failed, the source retains its pinned hash, snapshot is unchanged and no permanent-delete fallback is invoked",
+        "cleanup": "close only the recorded helper handle/process in finally and verify partial/trash-locked.txt remains byte-exact",
+        "coverage_label": "native_windows_recycle_failure"
+      },
+      {
+        "id": "post-operation-snapshot-failure",
+        "paths": ["partial/ok.bin", "dest-copy/post-scan.bin"],
+        "operation": "from the packaged GUI issue one copy of partial/ok.bin to dest-copy/post-scan.bin while the acceptance-owned main-process filesystem adapter delegates the real copy and fails only the immediately following snapshot scan with code snapshot_read_failed",
+        "precondition": "adapter is inactive for launch and initial snapshot, target is absent, and source has its pinned hash",
+        "precondition_proof": "adapter event log proves exactly one armed post-mutation scan failure and the external oracle proves the destination did not exist before dispatch",
+        "expected": "copy entry is accepted, overall status is accepted, snapshot state is unavailable with snapshot_read_failed and last published generation, and destination bytes equal partial/ok.bin",
+        "cleanup": "disarm the adapter in finally, remove dest-copy/post-scan.bin, run a real refresh and require a current snapshot before the next case",
+        "coverage_label": "fault_injected_scan_after_real_native_copy"
+      },
+      {
+        "id": "unchanged-refresh",
+        "paths": ["refresh/base.txt"],
+        "operation": "invoke one GUI refresh without changing any fixture path or byte",
+        "precondition": "independent oracle captures the exact current manifest and generation",
+        "precondition_proof": "oracle rechecks the same manifest immediately before refresh dispatch",
+        "expected": "one byte-identical new snapshot is published at previous generation plus one and no per-entry mutation is reported",
+        "cleanup": "no filesystem cleanup; re-run oracle and prove the fixture manifest stayed identical",
+        "coverage_label": "packaged_gui_native_filesystem"
+      },
+      {
+        "id": "relaunch-reselect",
+        "paths": ["."],
+        "operation": "gracefully close packaged PID A, launch packaged PID B, then explicitly select the same pinned root through the labeled picker path",
+        "precondition": "PID A and its process tree were launched by this harness and the root matches the independent manifest",
+        "precondition_proof": "wait for PID A to exit, record PID B and prove B differs from A before root selection",
+        "expected": "no root is active before explicit selection; selection publishes a fresh initial snapshot that matches the oracle and makes no remembered-root claim",
+        "cleanup": "gracefully close PID B, then terminate only B's exact process tree if graceful exit fails; never kill by image or command-line census",
+        "coverage_label": "packaged_process_with_labeled_picker"
+      }
     ],
     "entries": [
       { "path": "nav", "kind": "directory" },
@@ -225,13 +371,18 @@
       { "path": "partial", "kind": "directory" },
       { "path": "partial/ok.bin", "kind": "file", "bytes": 8, "sha256": "a988e1e25ad1f6b00f91fb68e8eec8b68b8bfd6ff1f8eaca2f121d075a35bf78", "payload_hex": "deadbeef00112233" },
       { "path": "partial/locked.bin", "kind": "file", "bytes": 8, "sha256": "f78d2b3f2e61b1f7ff5404b8e97589c3c7eb558fbd292900acd562aa58ebe9f8", "payload_hex": "cafebabe44556677" },
-      { "path": "conflicts", "kind": "directory" },
-      { "path": "conflicts/existing-name.txt", "kind": "file", "bytes": 9, "sha256": "d32cf044872a37e6439d9055f90a0da11f1e0b07fa4e79d6ec710764ce1e206a", "payload_hex": "6578697374696e670a" },
+      { "path": "partial/unreadable.bin", "kind": "file", "bytes": 8, "sha256": "1dce6604591efb439d5e87418a1d00dbfd014327d8c4dea862815714b76ae9a5", "payload_hex": "1122334455667788" },
+      { "path": "partial/trash-locked.txt", "kind": "file", "bytes": 13, "sha256": "379b4e2bb12025664f19bc048d76958619ce1a9ac3d5bb75277d047d5803b023", "payload_hex": "74726173682d6c6f636b65640a" },
       { "path": "refresh", "kind": "directory" },
       { "path": "refresh/base.txt", "kind": "file", "bytes": 5, "sha256": "f34848ca92665c342abd5816c9e3eda0e82180671195362bcd0080544a3bc2ac", "payload_hex": "626173650a" },
       { "path": "rename-me.txt", "kind": "file", "bytes": 10, "sha256": "24ce986fb2d2e07e06ffa556b4e6795071033ef13947e74e8f67aa701ca86905", "payload_hex": "72656e616d652d6d650a" },
+      { "path": "rename-conflict.txt", "kind": "file", "bytes": 25, "sha256": "e14a945071c78a2644d1c322efbaae45d2c3a2bc3ab54b47cec7bdb0fe6eb8f1", "payload_hex": "72656e616d652d636f6e666c6963742d73656e74696e656c0a" },
       { "path": "dest-copy", "kind": "directory" },
-      { "path": "dest-move", "kind": "directory" }
+      { "path": "dest-copy-conflict", "kind": "directory" },
+      { "path": "dest-copy-conflict/copy-file.bin", "kind": "file", "bytes": 8, "sha256": "2ad51efbeb86a257738b956d44c5437d950639d52fa3ce239bc0d57857fb1907", "payload_hex": "feedface99887766" },
+      { "path": "dest-move", "kind": "directory" },
+      { "path": "dest-move-conflict", "kind": "directory" },
+      { "path": "dest-move-conflict/move-file.txt", "kind": "file", "bytes": 23, "sha256": "084ba1e7f32a05b2d961efa8b205d4efd20bb4d11d6a8b5fe81f27f1a6c85c01", "payload_hex": "6d6f76652d636f6e666c6963742d73656e74696e656c0a" }
     ]
   },
   "performance": "NotMeasured",
