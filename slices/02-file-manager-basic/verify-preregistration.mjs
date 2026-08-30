@@ -27,7 +27,7 @@ const ROW_FIELDS = ["capability", "polarity", "action", "oracle", "failure_signa
 const SYSTEM_ROW_FIELDS = ["action", "oracle", "failure_signal", "covered_by", "dynamic_subjects"];
 const DYNAMIC_SUBJECT_FIELDS = [
   "id", "paths", "operation", "precondition", "precondition_proof",
-  "expected", "cleanup", "coverage_label",
+  "expected", "cleanup", "coverage_label", "precondition_failure",
 ];
 const SYSTEM_ROWS = [
   "FM-SYS-RESULT-UNION", "FM-SYS-SNAPSHOT-SEQUENCE", "FM-SYS-SNAPSHOT-UNAVAILABLE",
@@ -352,6 +352,16 @@ export function verify(root = ROOT) {
   check("fixture contract", fixture?.materialization_owner === "independent_acceptance"
     && fixture?.product_may_not_generate_expected_values === true
     && Array.isArray(fixture?.entries));
+  const dynamicPolicy = fixture?.dynamic_subject_policy;
+  check("dynamic subject policy", sameArray(dynamicPolicy?.precondition_states,
+    ["proven", "not_proven"])
+    && dynamicPolicy?.action_requires === "proven"
+    && dynamicPolicy?.not_proven_result === "DID_NOT_APPLY_acceptance_failure"
+    && dynamicPolicy?.did_not_apply_counts_as_caught === false
+    && sameArray(dynamicPolicy?.required_result_fields,
+      ["subject_id", "precondition_state", "proof_ref", "action_started", "outcome", "cleanup_state"])
+    && dynamicPolicy?.cleanup_requirement
+      === "finally_restore_exact_subject_and_prove_postcondition");
   const fixturePaths = new Set();
   if (Array.isArray(fixture?.entries)) {
     for (const entry of fixture.entries) {
@@ -410,6 +420,8 @@ export function verify(root = ROOT) {
     for (const field of [
       "operation", "precondition", "precondition_proof", "expected", "cleanup", "coverage_label",
     ]) check(`${scope} ${field}`, nonempty(subject[field]));
+    check(`${scope} precondition failure`,
+      subject.precondition_failure === "DID_NOT_APPLY_acceptance_failure");
   }
   check("system acceptance dynamic subjects resolve",
     systemDynamicRefs.every((id) => dynamicIds.includes(id)),
@@ -451,6 +463,31 @@ export function verify(root = ROOT) {
   check("timing policy", document.timing_policy?.purpose?.includes("hang detection")
     && document.timing_policy?.per_gui_action_hard_cap_seconds === 30
     && document.timing_policy?.workflow_hard_cap_seconds === 180);
+  const capPolicy = document.timing_policy?.cap_breach_policy;
+  const capClassifications = capPolicy?.classifications;
+  check("cap breach policy", capPolicy?.classification_required === true
+    && exactKeys(capClassifications,
+      ["product_hang", "instrument_subject_mismatch", "environment_limit"])
+    && sameArray(capPolicy?.required_record_fields,
+      ["action_id", "classification", "elapsed_ms", "cap_ms", "timer_start_evidence",
+        "timer_stop_evidence", "subject_manifest_sha256", "environment_snapshot_ref"])
+    && capPolicy?.direct_timeout_to_product_failure === false
+    && capPolicy?.silent_cap_increase === "forbidden"
+    && capPolicy?.route_or_subject_substitution === "forbidden");
+  for (const name of ["product_hang", "instrument_subject_mismatch", "environment_limit"]) {
+    check(`cap breach policy ${name} fields`, exactKeys(capClassifications?.[name],
+      ["acceptance_row_verdict", "product_verdict", "requires"])
+      && nonempty(capClassifications?.[name]?.requires));
+  }
+  check("cap breach policy product hang consequence",
+    capClassifications?.product_hang?.acceptance_row_verdict === "failed"
+    && capClassifications?.product_hang?.product_verdict === "failed");
+  check("cap breach policy instrument mismatch consequence",
+    capClassifications?.instrument_subject_mismatch?.acceptance_row_verdict === "invalid_harness"
+    && capClassifications?.instrument_subject_mismatch?.product_verdict === "NotMeasured");
+  check("cap breach policy environment consequence",
+    capClassifications?.environment_limit?.acceptance_row_verdict === "NotMeasured"
+    && capClassifications?.environment_limit?.product_verdict === "NotMeasured");
   const timing = document.timing_policy?.bounded_actions;
   check("timing action set", Array.isArray(timing)
     && sameArray(timing.map((x) => x?.id), ["copy-directory-tree", "move-directory-tree"]));

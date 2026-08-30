@@ -81,10 +81,14 @@ Reparse entries may be displayed, but a reparse root, traversal through a repars
 
 13 pinned directories, 17 pinned files, 205 payload bytes. Payload hex and SHA-256 are owned by independent acceptance, not derived by the product.
 
+Every dynamic subject must prove its precondition before action. An unproved precondition is `DID_NOT_APPLY` and an acceptance failure; it never counts as a caught attack.
+
 - `copy-directory-tree`: one_gui_batch_command; subject copy-dir exact manifest subtree; stop when overall result and snapshot state are rendered.
 - `move-directory-tree`: one_gui_batch_command; subject move-dir exact manifest subtree; stop when overall result and snapshot state are rendered.
 
 The caps are hang detectors, not performance claims. Replacing a GUI batch command with a test-side loop changes the subject and fails acceptance.
+
+Every cap breach is classified as `product_hang`, `instrument_subject_mismatch` or `environment_limit`. Only a proven product hang fails the product; harness mismatch invalidates the harness and environment limits remain `NotMeasured`.
 
 ## Comparator
 

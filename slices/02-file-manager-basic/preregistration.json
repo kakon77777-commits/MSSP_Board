@@ -270,6 +270,14 @@
     "materialization_owner": "independent_acceptance",
     "product_may_not_generate_expected_values": true,
     "root_location": "fresh D-drive scratch directory created per run; never a user folder",
+    "dynamic_subject_policy": {
+      "precondition_states": ["proven", "not_proven"],
+      "action_requires": "proven",
+      "not_proven_result": "DID_NOT_APPLY_acceptance_failure",
+      "did_not_apply_counts_as_caught": false,
+      "required_result_fields": ["subject_id", "precondition_state", "proof_ref", "action_started", "outcome", "cleanup_state"],
+      "cleanup_requirement": "finally_restore_exact_subject_and_prove_postcondition"
+    },
     "dynamic_subjects": [
       {
         "id": "escape-junction",
@@ -279,7 +287,8 @@
         "precondition_proof": "lstat identifies a reparse point and an independent canonical-target query proves the target is outside the selected root before either attack",
         "expected": "entry is visibly typed reparse; navigate and trash are refused with distinct typed codes; snapshot and outside target remain unchanged",
         "cleanup": "remove only root/escape-junction, then remove sibling escape-target-${run_id}; verify the rest of the pinned root still matches its manifest",
-        "coverage_label": "native_windows_junction"
+        "coverage_label": "native_windows_junction",
+        "precondition_failure": "DID_NOT_APPLY_acceptance_failure"
       },
       {
         "id": "locked-member",
@@ -289,7 +298,8 @@
         "precondition_proof": "the helper reports its exact PID/handle and a direct control move fails with sharing violation before the product request",
         "expected": "single-entry result is failed; multi-entry result is partial; locked source hash remains pinned, successful source/destination are exact, and every ID has an outcome",
         "cleanup": "close only the recorded helper handle/process in finally, remove dest-move/locked.bin if present, and restore partial/ok.bin from pinned payload",
-        "coverage_label": "native_windows_lock"
+        "coverage_label": "native_windows_lock",
+        "precondition_failure": "DID_NOT_APPLY_acceptance_failure"
       },
       {
         "id": "unreadable-entry",
@@ -299,7 +309,8 @@
         "precondition_proof": "an independent read/stat control fails for partial/unreadable.bin and succeeds for partial/ok.bin before the product actions",
         "expected": "view is partial rather than false-empty; copy result is partial; unreadable source hash is unchanged and dest-copy/unreadable.bin is absent",
         "cleanup": "restore the saved ACL exactly in finally, remove dest-copy/unreadable.bin if present, and verify both pinned source hashes",
-        "coverage_label": "native_windows_acl"
+        "coverage_label": "native_windows_acl",
+        "precondition_failure": "DID_NOT_APPLY_acceptance_failure"
       },
       {
         "id": "refresh-change",
@@ -309,7 +320,8 @@
         "precondition_proof": "independent tree-and-byte oracle records the precondition immediately before the external write/remove",
         "expected": "one new snapshot omits base.txt, includes external-added.bin with 4 bytes and SHA-256 97ed8e55519b020c4d9aceb40e0d3bc7eaa22d080d49592bf21206cb697c8a58, and invalidates every old entry_id",
         "cleanup": "remove external-added.bin, restore base.txt from pinned payload, invoke no product operation during cleanup, and re-run the independent oracle",
-        "coverage_label": "native_external_filesystem_change"
+        "coverage_label": "native_external_filesystem_change",
+        "precondition_failure": "DID_NOT_APPLY_acceptance_failure"
       },
       {
         "id": "trash-failure",
@@ -319,7 +331,8 @@
         "precondition_proof": "the helper reports exact PID/handle and a control native recycle attempt fails before the product request",
         "expected": "overall and per-entry status are failed, the source retains its pinned hash, snapshot is unchanged and no permanent-delete fallback is invoked",
         "cleanup": "close only the recorded helper handle/process in finally and verify partial/trash-locked.txt remains byte-exact",
-        "coverage_label": "native_windows_recycle_failure"
+        "coverage_label": "native_windows_recycle_failure",
+        "precondition_failure": "DID_NOT_APPLY_acceptance_failure"
       },
       {
         "id": "post-operation-snapshot-failure",
@@ -329,7 +342,8 @@
         "precondition_proof": "adapter event log proves exactly one armed post-mutation scan failure and the external oracle proves the destination did not exist before dispatch",
         "expected": "copy entry is accepted, overall status is accepted, snapshot state is unavailable with snapshot_read_failed and last published generation, and destination bytes equal partial/ok.bin",
         "cleanup": "disarm the adapter in finally, remove dest-copy/post-scan.bin, run a real refresh and require a current snapshot before the next case",
-        "coverage_label": "fault_injected_scan_after_real_native_copy"
+        "coverage_label": "fault_injected_scan_after_real_native_copy",
+        "precondition_failure": "DID_NOT_APPLY_acceptance_failure"
       },
       {
         "id": "unchanged-refresh",
@@ -339,7 +353,8 @@
         "precondition_proof": "oracle rechecks the same manifest immediately before refresh dispatch",
         "expected": "one byte-identical new snapshot is published at previous generation plus one and no per-entry mutation is reported",
         "cleanup": "no filesystem cleanup; re-run oracle and prove the fixture manifest stayed identical",
-        "coverage_label": "packaged_gui_native_filesystem"
+        "coverage_label": "packaged_gui_native_filesystem",
+        "precondition_failure": "DID_NOT_APPLY_acceptance_failure"
       },
       {
         "id": "relaunch-reselect",
@@ -349,7 +364,8 @@
         "precondition_proof": "wait for PID A to exit, record PID B and prove B differs from A before root selection",
         "expected": "no root is active before explicit selection; selection publishes a fresh initial snapshot that matches the oracle and makes no remembered-root claim",
         "cleanup": "gracefully close PID B, then terminate only B's exact process tree if graceful exit fails; never kill by image or command-line census",
-        "coverage_label": "packaged_process_with_labeled_picker"
+        "coverage_label": "packaged_process_with_labeled_picker",
+        "precondition_failure": "DID_NOT_APPLY_acceptance_failure"
       }
     ],
     "entries": [
@@ -391,6 +407,30 @@
     "per_gui_action_hard_cap_seconds": 30,
     "workflow_hard_cap_seconds": 180,
     "environment_recorded": ["CPU", "RAM", "storage", "Windows build", "Electron version", "background-load note"],
+    "cap_breach_policy": {
+      "classification_required": true,
+      "classifications": {
+        "product_hang": {
+          "acceptance_row_verdict": "failed",
+          "product_verdict": "failed",
+          "requires": "the exact bounded action, subject and timer boundaries were proven and environment controls do not explain the breach"
+        },
+        "instrument_subject_mismatch": {
+          "acceptance_row_verdict": "invalid_harness",
+          "product_verdict": "NotMeasured",
+          "requires": "evidence shows the harness performed an action or subject outside bounded_actions"
+        },
+        "environment_limit": {
+          "acceptance_row_verdict": "NotMeasured",
+          "product_verdict": "NotMeasured",
+          "requires": "recorded environment evidence explains why the exact bounded action cannot be judged on this run"
+        }
+      },
+      "required_record_fields": ["action_id", "classification", "elapsed_ms", "cap_ms", "timer_start_evidence", "timer_stop_evidence", "subject_manifest_sha256", "environment_snapshot_ref"],
+      "direct_timeout_to_product_failure": false,
+      "silent_cap_increase": "forbidden",
+      "route_or_subject_substitution": "forbidden"
+    },
     "bounded_actions": [
       { "id": "copy-directory-tree", "trigger": "one_gui_batch_command", "subject": "copy-dir exact manifest subtree", "timer_start": "renderer dispatch of the user command", "timer_stop": "overall result and snapshot state are rendered", "forbidden_substitution": "test-side per-entry loop, pre-copy, internal service call or different fixture" },
       { "id": "move-directory-tree", "trigger": "one_gui_batch_command", "subject": "move-dir exact manifest subtree", "timer_start": "renderer dispatch of the user command", "timer_stop": "overall result and snapshot state are rendered", "forbidden_substitution": "test-side per-entry loop, pre-move, internal service call or different fixture" }

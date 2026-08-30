@@ -164,6 +164,25 @@ const drills = [
     }),
   },
   {
+    label: "remove global DID_NOT_APPLY policy",
+    expect: "dynamic subject policy",
+    apply: mutateJson((d) => {
+      if (!d.fixture_contract?.dynamic_subject_policy) return false;
+      delete d.fixture_contract.dynamic_subject_policy;
+      return true;
+    }),
+  },
+  {
+    label: "count an unmet dynamic precondition as a caught attack",
+    expect: "dynamic subject",
+    apply: mutateJson((d) => {
+      const subject = d.fixture_contract?.dynamic_subjects?.find((x) => x.id === "locked-member");
+      if (!subject || subject.precondition_failure !== "DID_NOT_APPLY_acceptance_failure") return false;
+      subject.precondition_failure = "caught_attack";
+      return true;
+    }),
+  },
+  {
     label: "move deferred default-open into the denominator",
     expect: "active denominator",
     apply: mutateJson((d) => {
@@ -180,6 +199,26 @@ const drills = [
       const action = d.timing_policy?.bounded_actions?.find((x) => x.id === "copy-directory-tree");
       if (!action || action.trigger !== "one_gui_batch_command") return false;
       action.trigger = "test_side_per_entry_loop";
+      return true;
+    }),
+  },
+  {
+    label: "remove cap-breach attribution procedure",
+    expect: "cap breach policy",
+    apply: mutateJson((d) => {
+      if (!d.timing_policy?.cap_breach_policy) return false;
+      delete d.timing_policy.cap_breach_policy;
+      return true;
+    }),
+  },
+  {
+    label: "turn instrument mismatch into product failure",
+    expect: "cap breach policy",
+    apply: mutateJson((d) => {
+      const mismatch = d.timing_policy?.cap_breach_policy?.classifications
+        ?.instrument_subject_mismatch;
+      if (!mismatch || mismatch.product_verdict !== "NotMeasured") return false;
+      mismatch.product_verdict = "failed";
       return true;
     }),
   },

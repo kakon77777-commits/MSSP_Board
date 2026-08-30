@@ -60,11 +60,15 @@ export function renderReadme(d) {
   const bytes = files.reduce((sum, x) => sum + x.bytes, 0);
   lines.push(`${directories.length} pinned directories, ${files.length} pinned files, ${bytes} payload bytes. Payload hex and SHA-256 are owned by independent acceptance, not derived by the product.`);
   lines.push("");
+  lines.push("Every dynamic subject must prove its precondition before action. An unproved precondition is `DID_NOT_APPLY` and an acceptance failure; it never counts as a caught attack.");
+  lines.push("");
   for (const action of d.timing_policy.bounded_actions) {
     lines.push(`- \`${action.id}\`: ${action.trigger}; subject ${action.subject}; stop when ${action.timer_stop}.`);
   }
   lines.push("");
   lines.push("The caps are hang detectors, not performance claims. Replacing a GUI batch command with a test-side loop changes the subject and fails acceptance.");
+  lines.push("");
+  lines.push("Every cap breach is classified as `product_hang`, `instrument_subject_mismatch` or `environment_limit`. Only a proven product hang fails the product; harness mismatch invalidates the harness and environment limits remain `NotMeasured`.");
   lines.push("");
   lines.push("## Comparator");
   lines.push("");
