@@ -1,0 +1,15 @@
+{
+  "schema": "mssp.technical-close-decision/v0-experimental",
+  "product_position": "01",
+  "product_slug": "text-editor-basic",
+  "decision": "technical_close_accepted",
+  "commit": "7366c4ec0e4404bbb571964adcdc139254df6c50",
+  "tree": "c636d10854dd6aeade5ad3131f527421bc8036ae",
+  "decided_at": "2026-08-30",
+  "source": {
+    "kind": "external_digest",
+    "ref": "MSSP_Architect_Exchange/decisions/2026-08-30-slice-01-closed.md",
+    "bytes": 2826,
+    "sha256": "dfda7287e4015b18bf9f38cf6040e4d0cae3aa675ee3882e7ba12761b2d685c3"
+  }
+}

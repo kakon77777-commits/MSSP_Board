@@ -1,0 +1,84 @@
+{
+  "schema": "mssp.execution-snapshot/v0-experimental",
+  "product_position": "01",
+  "product_slug": "text-editor-basic",
+  "subject_commit": "7366c4ec0e4404bbb571964adcdc139254df6c50",
+  "subject_tree": "c636d10854dd6aeade5ad3131f527421bc8036ae",
+  "observed_at": "2026-08-30",
+  "commands": [
+    {
+      "id": "npm-test",
+      "kind": "test",
+      "cwd": "apps/text-editor-basic",
+      "command": "npm test",
+      "exit_code": 0,
+      "tests": 69,
+      "failures": 0
+    },
+    {
+      "id": "drill-boundary-contract",
+      "kind": "drill",
+      "cwd": "apps/text-editor-basic",
+      "command": "node tests/drill-boundary-contract.mjs",
+      "exit_code": 0,
+      "mutations": 7,
+      "surviving": 0
+    },
+    {
+      "id": "drill-unit-manifest",
+      "kind": "drill",
+      "cwd": "apps/text-editor-basic",
+      "command": "node tests/drill-unit-manifest.mjs",
+      "exit_code": 0,
+      "mutations": 10,
+      "surviving": 0
+    },
+    {
+      "id": "drill-dms-build-freshness",
+      "kind": "drill",
+      "cwd": "apps/text-editor-basic",
+      "command": "node tests/drill-dms-build-freshness.mjs",
+      "exit_code": 0,
+      "mutations": 1,
+      "surviving": 0
+    }
+  ],
+  "acceptance": {
+    "ids": 10,
+    "open": 0,
+    "source": {
+      "kind": "external_digest",
+      "ref": "MSSP_Architect_Exchange/evidence/2026-08-30-pragma-a2-successor-2997b78-system-acceptance.md",
+      "bytes": 4855,
+      "sha256": "1d094bfbe037e292fe98328eaa24094e9e5519d251454db40a9a188da77409e5"
+    }
+  },
+  "outsourced_units": [
+    {
+      "path": "apps/text-editor-basic/src/tms/encoding/utf8-document-codec.ts",
+      "bytes": 2100,
+      "candidate_sha256": "521fa7258cb93afe7947e9909943e2ca8f989d1fd16c705345451a182d6e03d5",
+      "integrated_sha256": "521fa7258cb93afe7947e9909943e2ca8f989d1fd16c705345451a182d6e03d5"
+    },
+    {
+      "path": "apps/text-editor-basic/src/dms/encoding-visibility.ts",
+      "bytes": 1660,
+      "candidate_sha256": "6c351474f3eae7208e6a11f216c25a6555f8ce833695f3a672fe00e45647aa5e",
+      "integrated_sha256": "6c351474f3eae7208e6a11f216c25a6555f8ce833695f3a672fe00e45647aa5e"
+    }
+  ],
+  "sources": [
+    {
+      "kind": "external_digest",
+      "ref": "MSSP_Architect_Exchange/decisions/2026-08-30-slice-01-closed.md",
+      "bytes": 2826,
+      "sha256": "dfda7287e4015b18bf9f38cf6040e4d0cae3aa675ee3882e7ba12761b2d685c3"
+    },
+    {
+      "kind": "external_digest",
+      "ref": "MSSP_Architect_Exchange/acceptance/2026-08-30-metron-dms-freshness-drill-review.md",
+      "bytes": 2520,
+      "sha256": "4dbf26fd1c81b3de5e67024561e54d37d69d75811119d4addd572f50cfe0b1f9"
+    }
+  ]
+}

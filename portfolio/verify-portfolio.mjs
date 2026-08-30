@@ -22,11 +22,14 @@ import {
 import { buildIndex, loadRecords, loadRoadmap, renderReadme } from "./render-index.mjs";
 import {
   BLOCKER_FIELDS, BLOCKER_STATES, CLOSE_FIELDS, COMMIT_EVIDENCE_FIELDS,
-  EVIDENCE_KINDS, EXTERNAL_EVIDENCE_FIELDS, INDEX_SCHEMA, MEASURED_FIELDS,
+  EVIDENCE_KINDS, EXECUTION_ACCEPTANCE_FIELDS, EXECUTION_DRILL_FIELDS,
+  EXECUTION_SNAPSHOT_FIELDS, EXECUTION_SNAPSHOT_SCHEMA, EXECUTION_TEST_FIELDS,
+  EXECUTION_UNIT_FIELDS, EXTERNAL_EVIDENCE_FIELDS, INDEX_SCHEMA, MEASURED_FIELDS,
   OWNER_FIELDS, PATH_EVIDENCE_FIELDS, PRODUCT_FIELDS, PRODUCT_SCHEMA,
   REPOSITORY_SNAPSHOT_EVIDENCE_FIELDS, ROADMAP_FIELDS,
   ROADMAP_POSITION_FIELDS, ROADMAP_SCHEMA, SELECTIONS,
   SELECTION_SNAPSHOT_FIELDS, SELECTION_SNAPSHOT_SCHEMA, STAGE_FIELDS,
+  TECHNICAL_CLOSE_DECISION_FIELDS, TECHNICAL_CLOSE_DECISION_SCHEMA,
   WORK_ITEM_FIELDS, WORK_ITEM_STATES, duplicateKeys, isNonEmptyString,
   isNonNegativeInteger, isPlainObject, missingFields, unknownFields,
 } from "./schema.mjs";
@@ -44,6 +47,9 @@ const fail = (where, message) => failures.push(`${where}: ${message}`);
 
 function git(args) {
   return execFileSync("git", args, { cwd: repo, encoding: "utf8" }).trim();
+}
+function gitBuffer(args) {
+  return execFileSync("git", args, { cwd: repo, encoding: null });
 }
 function gitOk(args) {
   try { execFileSync("git", args, { cwd: repo, stdio: "pipe" }); return true; }
@@ -73,9 +79,12 @@ function checkStrictJson(file, allowedTop) {
 
 const fullSha = (value) => typeof value === "string" && /^[0-9a-f]{40}$/.test(value);
 const fullDigest = (value) => typeof value === "string" && /^[0-9a-f]{64}$/.test(value);
-const validDate = (value) => typeof value === "string"
-  && /^\d{4}-\d{2}-\d{2}$/.test(value)
-  && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
+const validDate = (value) => {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const instant = Date.parse(`${value}T00:00:00Z`);
+  return Number.isFinite(instant)
+    && new Date(instant).toISOString().slice(0, 10) === value;
+};
 
 function checkRepoRelative(where, value) {
   if (!isNonEmptyString(value) || path.isAbsolute(value) || value.includes("\\")
@@ -148,6 +157,151 @@ function checkEvidence(where, refs) {
           }
         }
       }
+    }
+  }
+}
+
+function checkTechnicalCloseDecision(where, record, closedStage) {
+  const snapshots = closedStage.evidence_refs
+    .filter((ref) => ref?.kind === "repository_snapshot");
+  if (snapshots.length !== 1) {
+    fail(where, `technical_close requires exactly one repository decision snapshot; found ${snapshots.length}`);
+    return;
+  }
+  const confined = checkRepoRelative(where, snapshots[0].ref);
+  if (confined === null || !existsSync(path.join(repo, confined))) return;
+  const relative = path.relative(here, path.join(repo, confined)).replace(/\\/g, "/");
+  const decision = checkStrictJson(relative, TECHNICAL_CLOSE_DECISION_FIELDS);
+  if (decision === null) return;
+  if (decision.schema !== TECHNICAL_CLOSE_DECISION_SCHEMA) {
+    fail(where, `decision snapshot schema must be ${TECHNICAL_CLOSE_DECISION_SCHEMA}`);
+  }
+  if (decision.product_position !== record.position || decision.product_slug !== record.slug) {
+    fail(where, "decision snapshot names a different product");
+  }
+  if (decision.decision !== "technical_close_accepted") {
+    fail(where, `decision snapshot decision ${decision.decision}`);
+  }
+  for (const key of ["commit", "tree"]) {
+    if (decision[key] !== record.close?.[key]) fail(where, `decision snapshot ${key} does not match close record`);
+  }
+  if (decision.decided_at !== record.close?.date) {
+    fail(where, "decision snapshot decided_at does not match close decision date");
+  }
+  checkEvidence(`${where} decision provenance`, [decision.source]);
+}
+
+function checkExecutionSnapshot(where, record) {
+  checkEvidence(`${where} measured evidence`, [record.measured_evidence]);
+  const ref = record.measured_evidence;
+  if (ref?.kind !== "repository_snapshot") {
+    fail(where, "measured_evidence must be a repository_snapshot");
+    return;
+  }
+  const confined = checkRepoRelative(where, ref.ref);
+  if (confined === null || !existsSync(path.join(repo, confined))) return;
+  const relative = path.relative(here, path.join(repo, confined)).replace(/\\/g, "/");
+  const snapshot = checkStrictJson(relative, EXECUTION_SNAPSHOT_FIELDS);
+  if (snapshot === null) return;
+  if (snapshot.schema !== EXECUTION_SNAPSHOT_SCHEMA) {
+    fail(where, `execution snapshot schema must be ${EXECUTION_SNAPSHOT_SCHEMA}`);
+  }
+  if (snapshot.product_position !== record.position || snapshot.product_slug !== record.slug) {
+    fail(where, "execution snapshot names a different product");
+  }
+  if (snapshot.subject_commit !== record.close?.commit || snapshot.subject_tree !== record.close?.tree) {
+    fail(where, "execution snapshot subject does not match close commit/tree");
+  }
+  if (!validDate(snapshot.observed_at)) fail(where, "execution snapshot observed_at is not a date");
+
+  const commands = Array.isArray(snapshot.commands) ? snapshot.commands : [];
+  if (!Array.isArray(snapshot.commands)) fail(where, "execution snapshot commands is not an array");
+  const commandIds = new Set();
+  const tests = [];
+  const drills = [];
+  for (const command of commands) {
+    if (!isPlainObject(command)) { fail(where, "execution command is not an object"); continue; }
+    const fields = command.kind === "test" ? EXECUTION_TEST_FIELDS
+      : command.kind === "drill" ? EXECUTION_DRILL_FIELDS : [];
+    if (fields.length === 0) fail(where, `execution command kind ${command.kind}`);
+    for (const key of unknownFields(command, fields)) fail(where, `execution command has unknown field ${key}`);
+    for (const key of missingFields(command, fields)) fail(where, `execution command is missing ${key}`);
+    if (!isNonEmptyString(command.id) || commandIds.has(command.id)) {
+      fail(where, `execution command id ${command.id} is empty or duplicated`);
+    }
+    commandIds.add(command.id);
+    if (!isNonEmptyString(command.command) || checkRepoRelative(where, command.cwd) === null) {
+      fail(where, `execution command ${command.id} has invalid command/cwd`);
+    }
+    if (command.exit_code !== 0) fail(where, `execution command ${command.id} did not exit 0`);
+    if (command.kind === "test") {
+      if (!isNonNegativeInteger(command.tests) || !isNonNegativeInteger(command.failures)) {
+        fail(where, `execution test ${command.id} has invalid counts`);
+      }
+      tests.push(command);
+    } else if (command.kind === "drill") {
+      if (!isNonNegativeInteger(command.mutations) || !isNonNegativeInteger(command.surviving)) {
+        fail(where, `execution drill ${command.id} has invalid counts`);
+      }
+      drills.push(command);
+    }
+  }
+  if (tests.length !== 1) fail(where, `execution snapshot must hold one test command; found ${tests.length}`);
+
+  const acceptance = snapshot.acceptance;
+  if (!isPlainObject(acceptance)) {
+    fail(where, "execution acceptance is not an object");
+  } else {
+    for (const key of unknownFields(acceptance, EXECUTION_ACCEPTANCE_FIELDS)) {
+      fail(where, `execution acceptance has unknown field ${key}`);
+    }
+    for (const key of missingFields(acceptance, EXECUTION_ACCEPTANCE_FIELDS)) {
+      fail(where, `execution acceptance is missing ${key}`);
+    }
+    if (!isNonNegativeInteger(acceptance.ids) || !isNonNegativeInteger(acceptance.open)) {
+      fail(where, "execution acceptance counts are invalid");
+    }
+    checkEvidence(`${where} acceptance provenance`, [acceptance.source]);
+  }
+
+  const units = Array.isArray(snapshot.outsourced_units) ? snapshot.outsourced_units : [];
+  if (!Array.isArray(snapshot.outsourced_units)) fail(where, "outsourced_units is not an array");
+  for (const unit of units) {
+    if (!isPlainObject(unit)) { fail(where, "outsourced unit is not an object"); continue; }
+    for (const key of unknownFields(unit, EXECUTION_UNIT_FIELDS)) fail(where, `outsourced unit has unknown field ${key}`);
+    for (const key of missingFields(unit, EXECUTION_UNIT_FIELDS)) fail(where, `outsourced unit is missing ${key}`);
+    const unitPath = checkRepoRelative(where, unit.path);
+    if (!isNonNegativeInteger(unit.bytes) || unit.bytes === 0
+        || !fullDigest(unit.candidate_sha256) || !fullDigest(unit.integrated_sha256)) {
+      fail(where, `outsourced unit ${unit.path} has invalid byte/hash fields`);
+    }
+    if (unitPath !== null && fullSha(snapshot.subject_commit)
+        && gitOk(["cat-file", "-e", `${snapshot.subject_commit}:${unitPath}`])) {
+      const integrated = gitBuffer(["show", `${snapshot.subject_commit}:${unitPath}`]);
+      const digest = createHash("sha256").update(integrated).digest("hex");
+      if (integrated.byteLength !== unit.bytes || digest !== unit.integrated_sha256) {
+        fail(where, `outsourced unit ${unitPath} does not match integrated bytes/hash`);
+      }
+    } else if (unitPath !== null) {
+      fail(where, `outsourced unit ${unitPath} is absent from execution subject`);
+    }
+  }
+  checkEvidence(`${where} execution provenance`, snapshot.sources);
+
+  const derived = {
+    tests: tests[0]?.tests,
+    test_failures: tests[0]?.failures,
+    drills: drills.length,
+    drill_mutations_surviving: drills.reduce((sum, command) => sum + (command.surviving ?? 0), 0),
+    acceptance_ids: acceptance?.ids,
+    acceptance_ids_open: acceptance?.open,
+    outsourced_units_in_tree: units.length,
+    outsourced_units_byte_identical: units.length > 0
+      && units.every((unit) => unit.candidate_sha256 === unit.integrated_sha256),
+  };
+  for (const key of MEASURED_FIELDS) {
+    if (record.measured?.[key] !== derived[key]) {
+      fail(where, `measured.${key} does not match execution snapshot`);
     }
   }
 }
@@ -289,6 +443,8 @@ for (const [position, { record, file }] of records) {
     checkEvidence(scope, item.evidence_refs);
   }
 
+  const blockersUsable = Array.isArray(record.blockers)
+    && record.blockers.every(isPlainObject);
   const blockerKeys = new Set();
   for (const blocker of Array.isArray(record.blockers) ? record.blockers : []) {
     if (!isPlainObject(blocker)) { fail(where, "blocker is not an object"); continue; }
@@ -315,6 +471,8 @@ for (const [position, { record, file }] of records) {
     }
   }
 
+  const stagesUsable = Array.isArray(record.stages)
+    && record.stages.every(isPlainObject);
   const seenStages = new Set();
   for (const stage of Array.isArray(record.stages) ? record.stages : []) {
     if (!isPlainObject(stage)) { fail(where, "stage is not an object"); continue; }
@@ -355,18 +513,19 @@ for (const [position, { record, file }] of records) {
   }
 
   const closedStage = (Array.isArray(record.stages) ? record.stages : [])
-    .find((s) => s.stage === "technical_close");
+    .find((s) => isPlainObject(s) && s.stage === "technical_close");
   const closed = closedStage !== undefined && closedStage.state === "passed";
   if (!closed) {
     if (record.close !== null) fail(where, "is not technically closed but carries a close reference");
     continue;
   }
-  if (!Array.isArray(record.blockers) || !technicalCloseEligible(record)) {
+  if (!stagesUsable || !blockersUsable || !technicalCloseEligible(record)) {
     fail(where, "technical_close is passed while the derivation says it is not eligible");
   }
-  if (!Array.isArray(closedStage.evidence_refs)
-      || !closedStage.evidence_refs.some((ref) => ["external_digest", "repository_snapshot"].includes(ref?.kind))) {
-    fail(where, "technical_close has no review/decision evidence distinct from the code commit");
+  if (!Array.isArray(closedStage.evidence_refs)) {
+    fail(where, "technical_close evidence_refs is not an array");
+  } else {
+    checkTechnicalCloseDecision(where, record, closedStage);
   }
   if (record.close === null || record.close === undefined) {
     fail(where, "technical_close is passed with no close reference");
@@ -420,13 +579,19 @@ for (const [position, { record, file }] of records) {
       fail(where, `is closed with ${m.acceptance_ids_open} acceptance IDs still open`);
     }
   }
-  if (Array.isArray(record.blockers) && record.blockers.some((b) => b.state === "open")) {
+  checkExecutionSnapshot(where, record);
+  const closedOwners = OWNER_FIELDS.map((key) => record.owners?.[key]);
+  if (new Set(closedOwners).size !== OWNER_FIELDS.length) {
+    fail(where, "closed product build, manifest/oracle and system-acceptance owners are not pairwise distinct");
+  }
+  if (Array.isArray(record.blockers)
+      && record.blockers.some((b) => isPlainObject(b) && b.state === "open")) {
     fail(where, "is technically closed with an open blocker");
   }
 }
 
 // ---------------------------------------------------------------- generated
-if (roadmap !== null) {
+if (roadmap !== null && failures.length === 0) {
   const index = buildIndex(loadRoadmap(), records);
   const wantedIndex = JSON.stringify(index, null, 2) + "\n";
   const wantedReadme = renderReadme(index, records);
@@ -448,8 +613,9 @@ if (failures.length === 0) {
   process.stdout.write(`  ok   20 positions: ${named} named, ${records.size} with records, `
     + `${closed} technically closed\n`);
   process.stdout.write("  ok   strict schema: no unknown fields, no duplicate keys, identity agrees\n");
-  process.stdout.write(`  ok   every evidence ref resolves; every close is reachable from ${CANONICAL_REF} `
-    + "and its tree matches\n");
+  process.stdout.write(`  ok   repository evidence resolves; every close is reachable from ${CANONICAL_REF}, `
+    + "its tree matches, and its local decision snapshot agrees\n");
+  process.stdout.write("  ok   external digests are recorded provenance only; they are not claimed locally resolved\n");
   process.stdout.write("  ok   the generated index and README match the records\n");
   for (const [position, { record }] of records) {
     const gate = currentGate(record);

@@ -2,6 +2,7 @@
 // portfolio drill. Every case must become a named verifier rejection; a crash,
 // timeout, moved target or generic nonzero exit does not count as caught.
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -85,12 +86,99 @@ const cases = [
     },
   },
   {
+    name: "calendar-shaped impossible close date",
+    file: recordPath,
+    applyJson(record) {
+      record.close.date = "2026-99-99";
+      return true;
+    },
+  },
+  {
+    name: "close date is in the future of its decision",
+    file: recordPath,
+    regenerate: true,
+    applyJson(record) {
+      record.close.date = "2099-01-01";
+      return true;
+    },
+  },
+  {
+    name: "close date predates the product decision",
+    file: recordPath,
+    regenerate: true,
+    applyJson(record) {
+      record.close.date = "1970-01-02";
+      return true;
+    },
+  },
+  {
+    name: "roadmap positions is an object",
+    file: roadmapPath,
+    applyJson(roadmap) {
+      roadmap.positions = {};
+      return true;
+    },
+  },
+  {
+    name: "closed record contains null blocker",
+    file: recordPath,
+    applyJson(record) {
+      record.blockers.push(null);
+      return true;
+    },
+  },
+  {
+    name: "closed record contains null work item",
+    file: recordPath,
+    applyJson(record) {
+      record.work_items.push(null);
+      return true;
+    },
+  },
+  {
+    name: "closed record contains null stage",
+    file: recordPath,
+    applyJson(record) {
+      record.stages.push(null);
+      return true;
+    },
+  },
+  {
     name: "technical close retains code commit but loses decision evidence",
     file: recordPath,
     applyJson(record) {
       const stage = record.stages.find((item) => item.stage === "technical_close");
       if (!stage) return false;
       stage.evidence_refs = stage.evidence_refs.filter((ref) => ref.kind === "commit");
+      return true;
+    },
+  },
+  {
+    name: "arbitrary external digest masquerades as close decision",
+    file: recordPath,
+    applyJson(record) {
+      const stage = record.stages.find((item) => item.stage === "technical_close");
+      if (!stage) return false;
+      stage.evidence_refs = [
+        { kind: "commit", ref: record.close.commit },
+        { kind: "external_digest", ref: "not-a-close-decision", bytes: 1,
+          sha256: "0".repeat(64) },
+      ];
+      return true;
+    },
+  },
+  {
+    name: "unrelated repository snapshot masquerades as close decision",
+    file: recordPath,
+    applyJson(record) {
+      const stage = record.stages.find((item) => item.stage === "technical_close");
+      if (!stage) return false;
+      const unrelated = readFileSync(path.join(repo, "README.md"));
+      stage.evidence_refs = [
+        { kind: "commit", ref: record.close.commit },
+        { kind: "repository_snapshot", ref: "README.md", bytes: unrelated.byteLength,
+          sha256: createHash("sha256").update(unrelated).digest("hex") },
+      ];
       return true;
     },
   },
@@ -175,6 +263,43 @@ const cases = [
     regenerate: true,
     applyJson(record) {
       record.measured.tests = "69";
+      return true;
+    },
+  },
+  {
+    name: "measured drill count is an invented integer",
+    file: recordPath,
+    regenerate: true,
+    applyJson(record) {
+      record.measured.drills = 9999;
+      return true;
+    },
+  },
+  {
+    name: "measured test count is a different valid integer",
+    file: recordPath,
+    regenerate: true,
+    applyJson(record) {
+      record.measured.tests = 1;
+      return true;
+    },
+  },
+  {
+    name: "zero outsourced units retain byte-identical claim",
+    file: recordPath,
+    regenerate: true,
+    applyJson(record) {
+      record.measured.outsourced_units_in_tree = 0;
+      record.measured.outsourced_units_byte_identical = true;
+      return true;
+    },
+  },
+  {
+    name: "system acceptance owner equals build owner",
+    file: recordPath,
+    regenerate: true,
+    applyJson(record) {
+      record.owners.system_acceptance = record.owners.build;
       return true;
     },
   },

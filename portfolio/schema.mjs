@@ -15,11 +15,31 @@ export const SELECTION_SNAPSHOT_SCHEMA =
   "mssp.portfolio-selection-snapshot/v0-experimental";
 export const SELECTION_SNAPSHOT_FIELDS = Object.freeze(
   ["schema", "note", "source", "positions"]);
+export const TECHNICAL_CLOSE_DECISION_SCHEMA =
+  "mssp.technical-close-decision/v0-experimental";
+export const TECHNICAL_CLOSE_DECISION_FIELDS = Object.freeze([
+  "schema", "product_position", "product_slug", "decision", "commit", "tree", "decided_at", "source",
+]);
+export const EXECUTION_SNAPSHOT_SCHEMA = "mssp.execution-snapshot/v0-experimental";
+export const EXECUTION_SNAPSHOT_FIELDS = Object.freeze([
+  "schema", "product_position", "product_slug", "subject_commit", "subject_tree",
+  "observed_at", "commands", "acceptance", "outsourced_units", "sources",
+]);
+export const EXECUTION_TEST_FIELDS = Object.freeze([
+  "id", "kind", "cwd", "command", "exit_code", "tests", "failures",
+]);
+export const EXECUTION_DRILL_FIELDS = Object.freeze([
+  "id", "kind", "cwd", "command", "exit_code", "mutations", "surviving",
+]);
+export const EXECUTION_ACCEPTANCE_FIELDS = Object.freeze(["ids", "open", "source"]);
+export const EXECUTION_UNIT_FIELDS = Object.freeze([
+  "path", "bytes", "candidate_sha256", "integrated_sha256",
+]);
 
 export const PRODUCT_FIELDS = Object.freeze([
   "schema", "position", "id", "slug", "title_zh", "title_en", "summary_zh", "summary_en",
   "denominator_ref", "app_path", "owners", "note", "work_items", "stages", "blockers",
-  "close", "measured", "demonstrates", "intro_page",
+  "close", "measured", "measured_evidence", "demonstrates", "intro_page",
 ]);
 export const STAGE_FIELDS = Object.freeze(
   ["stage", "applicability", "state", "rationale", "evidence_refs"]);
