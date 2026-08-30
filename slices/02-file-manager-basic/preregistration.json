@@ -1,0 +1,297 @@
+{
+  "schema": "mssp.product-preregistration/v0",
+  "charter": "product-scale trial charter v0 (2026-08-21, three-way)",
+  "app_id": "file-manager-basic",
+  "wave": "group-1-foundation-discovery",
+  "position": "02",
+  "revision": "v0",
+  "created_at": "2026-08-30",
+  "primary_user_interface": "GUI",
+  "target_platform": {
+    "os": "Windows 11 x64",
+    "other_os": "NotMeasured",
+    "note": "One measured target. Nothing here implies cross-platform support."
+  },
+  "evidence_labeling": {
+    "gui_driver": "Playwright Electron API against the packaged application",
+    "native_directory_picker": "separate native artifact",
+    "native_recycle_operation": "separate native artifact",
+    "stubbed_automation": "labeled stubbed in every result",
+    "stubbed_never_counts_as_native": true,
+    "process_cleanup": "only exact process trees launched by the acceptance harness"
+  },
+  "product_claim": "A root-scoped Windows workspace file manager lets a user select one real directory, inspect and navigate its contents, refresh external changes, select one or more entries, create a directory, rename, copy, move and send files or directories to the Windows Recycle Bin. It does not claim to replace Explorer.",
+  "root_scope": {
+    "one_root_at_a_time": true,
+    "root_is_always_visible": true,
+    "change_root_is_explicit": true,
+    "remembered_root_required": false,
+    "navigate_above_root": "refused"
+  },
+  "primary_workflow": [
+    { "id": "W01", "action": "launch the packaged application" },
+    { "id": "W02", "action": "choose the pinned acceptance root and render its first exact directory snapshot" },
+    { "id": "W03", "action": "navigate into the pinned child directory and back to the selected root" },
+    { "id": "W04", "action": "perform an external create and remove, then refresh and render the new exact snapshot" },
+    { "id": "W05", "action": "select one entry, then select multiple entries by snapshot-scoped opaque entry IDs" },
+    { "id": "W06", "action": "create one directory with a single-segment name" },
+    { "id": "W07", "action": "rename one regular file without silent overwrite" },
+    { "id": "W08", "action": "copy one binary file and one directory tree within the selected root" },
+    { "id": "W09", "action": "move one regular file and one directory tree within the selected root" },
+    { "id": "W10", "action": "run one multi-entry mutation in which at least one entry succeeds and one controlled entry fails, and render partial per-entry outcomes" },
+    { "id": "W11", "action": "send one disposable file and one disposable directory tree to the Windows Recycle Bin without exposing permanent delete" },
+    { "id": "W12", "action": "close and relaunch the application, explicitly select the same root again, and render a fresh snapshot" },
+    { "id": "W13", "action": "an independent tree-and-byte oracle verifies every expected path, absence, payload and directory boundary" }
+  ],
+  "active_denominator": [
+    "choose-root",
+    "directory-view",
+    "navigate-within-root",
+    "refresh-external-change",
+    "entry-selection",
+    "create-directory",
+    "rename-entry",
+    "copy-entries",
+    "move-entries",
+    "trash-entries"
+  ],
+  "capability_acceptance_map": {
+    "choose-root": ["FM-ROOT-SELECT", "FM-ROOT-REFUSE", "FM-ROOT-REPARSE"],
+    "directory-view": ["FM-VIEW-MANIFEST", "FM-VIEW-PARTIAL"],
+    "navigate-within-root": ["FM-NAV-CHILD", "FM-NAV-PARENT", "FM-NAV-ESCAPE"],
+    "refresh-external-change": ["FM-REFRESH-EXTERNAL", "FM-REFRESH-STALE"],
+    "entry-selection": ["FM-SELECT-SINGLE", "FM-SELECT-MULTI", "FM-SELECT-STALE"],
+    "create-directory": ["FM-CREATE-DIRECTORY", "FM-CREATE-REFUSE"],
+    "rename-entry": ["FM-RENAME", "FM-RENAME-CONFLICT"],
+    "copy-entries": ["FM-COPY-FILE", "FM-COPY-DIRECTORY", "FM-COPY-PARTIAL", "FM-COPY-CONFLICT"],
+    "move-entries": ["FM-MOVE-FILE", "FM-MOVE-DIRECTORY", "FM-MOVE-PARTIAL", "FM-MOVE-CONFLICT"],
+    "trash-entries": ["FM-TRASH-FILE", "FM-TRASH-DIRECTORY", "FM-TRASH-REFUSE"]
+  },
+  "capability_acceptance_rule": "Every active capability owns at least one positive and one independently failable attack row. Single and multiple selection, and file and directory-tree operations, remain distinct rows without inflating the capability count. No acceptance ID may be shared by two capabilities.",
+  "acceptance_rows": {
+    "FM-ROOT-SELECT": { "capability": "choose-root", "polarity": "positive", "action": "select the pinned real directory through the GUI root picker", "oracle": "main returns the selected root identity and the exact first snapshot; UI displays the root", "failure_signal": "wrong root, missing snapshot, hidden root identity or renderer-supplied absolute path" },
+    "FM-ROOT-REFUSE": { "capability": "choose-root", "polarity": "attack", "action": "offer a file path, a missing directory and a disallowed root", "oracle": "each request is refused and the previous root and snapshot remain unchanged", "failure_signal": "any invalid subject becomes the active root or advances the snapshot" },
+    "FM-ROOT-REPARSE": { "capability": "choose-root", "polarity": "attack", "action": "offer a selected root that is itself a reparse point", "oracle": "the root is refused by typed code", "failure_signal": "the product traverses the reparse root or reports generic success" },
+    "FM-VIEW-MANIFEST": { "capability": "directory-view", "polarity": "positive", "action": "render the pinned root and child snapshots", "oracle": "independent manifest comparison covers names, kinds and regular-file byte lengths", "failure_signal": "missing, invented or mis-typed entry, or file size derived from renderer text" },
+    "FM-VIEW-PARTIAL": { "capability": "directory-view", "polarity": "attack", "action": "make one controlled entry unreadable after proving the fixture precondition", "oracle": "view completeness is partial with a typed observation error and is never rendered as an empty complete directory", "failure_signal": "false empty, complete=true, silent omission or an attack that did not establish unreadability" },
+    "FM-NAV-CHILD": { "capability": "navigate-within-root", "polarity": "positive", "action": "navigate from the selected root into nav", "oracle": "a new exact nav snapshot is published", "failure_signal": "wrong directory, reused generation or path supplied by renderer" },
+    "FM-NAV-PARENT": { "capability": "navigate-within-root", "polarity": "positive", "action": "navigate from nav back to the selected root", "oracle": "a new exact root snapshot is published and navigation stops at that root", "failure_signal": "wrong parent, no new snapshot or navigation above root" },
+    "FM-NAV-ESCAPE": { "capability": "navigate-within-root", "polarity": "attack", "action": "try parent escape, absolute alias, ADS, reserved name, NUL and a created junction", "oracle": "each is refused before traversal and the current snapshot remains unchanged", "failure_signal": "any escape is followed, normalized into permission, or produces a new snapshot" },
+    "FM-REFRESH-EXTERNAL": { "capability": "refresh-external-change", "polarity": "positive", "action": "create and remove pinned entries outside the app, then invoke one GUI refresh", "oracle": "one new snapshot is published and exactly reflects both external changes", "failure_signal": "stale tree, more than one generation increment or fake live-sync before refresh" },
+    "FM-REFRESH-STALE": { "capability": "refresh-external-change", "polarity": "attack", "action": "retain a pre-refresh entry ID, replace the same-name file externally, refresh, then submit the old ID", "oracle": "the old ID is refused and the replacement entry is untouched", "failure_signal": "same-name substitution or an old ID mutates the new entry" },
+    "FM-SELECT-SINGLE": { "capability": "entry-selection", "polarity": "positive", "action": "select exactly one current entry ID", "oracle": "UI and main agree on that one ID and generation", "failure_signal": "name-only selection, extra selected entry or generation mismatch" },
+    "FM-SELECT-MULTI": { "capability": "entry-selection", "polarity": "positive", "action": "select multiple distinct current entry IDs", "oracle": "UI and main agree on exact set membership; selection order is not a product claim", "failure_signal": "single-selection fallback, dropped member or silent duplicate collapse" },
+    "FM-SELECT-STALE": { "capability": "entry-selection", "polarity": "attack", "action": "submit missing, duplicate, unknown and cross-generation entry IDs", "oracle": "the whole request is refused before mutation and every requested ID receives a typed refusal outcome", "failure_signal": "partial preflight mutation, deduplication or same-name substitution" },
+    "FM-CREATE-DIRECTORY": { "capability": "create-directory", "polarity": "positive", "action": "create created-folder beneath the current directory", "oracle": "one directory appears and one new snapshot is published", "failure_signal": "wrong kind, wrong parent, duplicate creation or missing snapshot" },
+    "FM-CREATE-REFUSE": { "capability": "create-directory", "polarity": "attack", "action": "try empty, duplicate, reserved, ADS, separator and NUL-containing names", "oracle": "each is refused, creates nothing and retains the snapshot", "failure_signal": "normalization into a different name, partial creation or generation advance" },
+    "FM-RENAME": { "capability": "rename-entry", "polarity": "positive", "action": "rename rename-me.txt to renamed.txt using its current entry ID", "oracle": "payload hash is unchanged, old path absent, new path present and one new snapshot published", "failure_signal": "payload change, duplicate paths, wrong entry or wrong generation" },
+    "FM-RENAME-CONFLICT": { "capability": "rename-entry", "polarity": "attack", "action": "rename to conflicts/existing-name.txt and submit a stale source ID", "oracle": "both refuse without overwrite and retain the snapshot", "failure_signal": "existing destination changes, stale source substitutes by name or snapshot advances" },
+    "FM-COPY-FILE": { "capability": "copy-entries", "polarity": "positive", "action": "copy copy-file.bin into dest-copy with one GUI batch command", "oracle": "source and destination payloads are byte-identical and one new snapshot is published", "failure_signal": "text re-encoding, source removal, extra mutation or test-side copying" },
+    "FM-COPY-DIRECTORY": { "capability": "copy-entries", "polarity": "positive", "action": "copy the entire copy-dir tree into dest-copy with one GUI batch command", "oracle": "independent tree-and-byte oracle matches every nested file and empty directory", "failure_signal": "flattened tree, omitted empty directory, per-entry test loop or payload drift" },
+    "FM-COPY-PARTIAL": { "capability": "copy-entries", "polarity": "attack", "action": "copy one valid and one controlled unreadable member in one multi-entry request", "oracle": "overall status is partial, every requested ID has an outcome, the valid copy is exact and the failed destination is absent", "failure_signal": "whole-batch success, whole-batch fiction, missing member outcome or silent partial data" },
+    "FM-COPY-CONFLICT": { "capability": "copy-entries", "polarity": "attack", "action": "copy to an existing destination", "oracle": "request is refused without overwrite and the snapshot is unchanged", "failure_signal": "silent overwrite, auto-rename or generation advance" },
+    "FM-MOVE-FILE": { "capability": "move-entries", "polarity": "positive", "action": "move move-file.txt into dest-move with one GUI batch command", "oracle": "destination hash matches, source is absent and one new snapshot is published", "failure_signal": "copy-with-source-left, payload drift or more than one published snapshot" },
+    "FM-MOVE-DIRECTORY": { "capability": "move-entries", "polarity": "positive", "action": "move the entire move-dir tree into dest-move with one GUI batch command", "oracle": "destination tree is exact, original tree absent and empty/nested structure preserved", "failure_signal": "partial unreported move, flattened tree or test-side per-entry move loop" },
+    "FM-MOVE-PARTIAL": { "capability": "move-entries", "polarity": "attack", "action": "move one valid and one controlled locked member in one request", "oracle": "overall status is partial, successful source is absent, failed source remains, and every requested ID has an outcome", "failure_signal": "all-success fiction, rollback fiction, missing member or wrong payload" },
+    "FM-MOVE-CONFLICT": { "capability": "move-entries", "polarity": "attack", "action": "move to an existing destination and submit a stale destination-directory entry ID", "oracle": "both are refused without overwrite, substitution or mutation", "failure_signal": "silent overwrite, auto-rename, stale-ID substitution or generation advance" },
+    "FM-TRASH-FILE": { "capability": "trash-entries", "polarity": "positive", "action": "send trash-file.txt through the native Windows recycle operation", "oracle": "source leaves the root and independent native evidence identifies a recoverable recycle operation", "failure_signal": "permanent deletion, source disappearance alone or stubbed evidence reported as native" },
+    "FM-TRASH-DIRECTORY": { "capability": "trash-entries", "polarity": "positive", "action": "send the disposable trash-dir tree through the native Windows recycle operation", "oracle": "whole tree leaves the root and native recoverability evidence is recorded", "failure_signal": "permanent recursive delete, partial silent deletion or file-only implementation" },
+    "FM-TRASH-REFUSE": { "capability": "trash-entries", "polarity": "attack", "action": "submit stale, out-of-root and reparse entry IDs and force one controlled native failure", "oracle": "every refusal/failure is typed; zero-mutation results retain the snapshot; no permanent-delete fallback exists", "failure_signal": "target disappears, fallback deletion, wrong status or fabricated recovery evidence" }
+  },
+  "system_acceptance_rows": {
+    "FM-SYS-RESULT-UNION": "exercise accepted, partial, refused and failed as four distinguishable overall statuses; refusal is policy/precondition and failure is admitted I/O with zero successes",
+    "FM-SYS-SNAPSHOT-SEQUENCE": "every published snapshot advances generation exactly once regardless of refresh or mutation; generation is never interpreted as a mutation count",
+    "FM-SYS-SNAPSHOT-UNAVAILABLE": "after at least one mutation succeeds, force the post-operation scan to fail and require snapshot state unavailable with typed code and last published generation rather than a fabricated current or unchanged snapshot",
+    "FM-SYS-ENTRY-ID-SCOPE": "a new snapshot invalidates every prior opaque entry ID and name equality never revives one",
+    "FM-SYS-PATH-AUTHORITY": "renderer never supplies an absolute or relative path or filesystem handle; main resolves root, entry IDs, destinations and single-segment names",
+    "FM-SYS-REPARSE": "reparse entries may be shown but selected reparse roots, traversal and mutation are refused in v0; a resolved string is not cited as race-safe confinement",
+    "FM-SYS-NO-OVERWRITE": "rename, copy and move never silently overwrite or auto-rename a destination",
+    "FM-SYS-ACTION-SHAPE": "copy/move caps measure one specified GUI batch command over the pinned fixture subject, never a test-side per-entry loop or substituted injection route",
+    "FM-SYS-NO-PERMANENT-DELETE": "no renderer, preload or main route exposes permanent delete in v0",
+    "FM-SYS-RELAUNCH-RESELECT": "relaunch does not claim remembered-root persistence; acceptance explicitly selects the pinned root again"
+  },
+  "cross_cutting_contracts": {
+    "entry_identity": {
+      "issuer": "main_process",
+      "scope": "one_directory_snapshot_generation",
+      "opaque_to_renderer": true,
+      "invalidated_by": "every_new_published_snapshot",
+      "multi_selection_semantics": "exact_set_membership_order_not_semantic",
+      "renderer_submits": ["snapshot_generation", "entry_id", "destination_directory_entry_id_when_needed", "single_segment_name_when_needed"],
+      "renderer_never_submits": ["absolute_path", "relative_path", "filesystem_handle"]
+    },
+    "operation_result": {
+      "overall_statuses": ["accepted", "partial", "refused", "failed"],
+      "per_entry_statuses": ["accepted", "refused", "failed"],
+      "per_entry_meanings": {
+        "accepted": "this requested entry mutated successfully",
+        "refused": "policy or a precondition rejected this entry before its mutation",
+        "failed": "this entry was admitted to execution and its I/O failed"
+      },
+      "aggregation": {
+        "all_accepted": "accepted",
+        "at_least_one_accepted_and_any_nonaccepted": "partial",
+        "no_success_no_failed_at_least_one_refused": "refused",
+        "no_success_with_any_failed": "failed"
+      },
+      "accepted": "every requested entry succeeded",
+      "partial": "at least one requested entry succeeded and at least one was refused or failed",
+      "refused": "no requested entry succeeded, no entry reached execution failure, and policy or preconditions refused the request or every member before mutation",
+      "failed": "no requested entry succeeded and at least one admitted entry reached execution failure; other entries may have been refused",
+      "every_requested_id_has_outcome": true,
+      "duplicate_unknown_stale_or_cross_generation_ids": "refuse_whole_request_before_mutation",
+      "typed_code_required_for_nonaccepted": true
+    },
+    "snapshot": {
+      "generation_semantics": "published_snapshot_sequence",
+      "increment": "exactly_one_per_published_snapshot",
+      "completed_refresh_publication": "always_publish_one_snapshot_even_if_entries_are_byte_identical",
+      "mutation_observation_source": "per_entry_status_only",
+      "result_states": ["current", "unchanged", "unavailable"],
+      "current": "contains the newly published snapshot after observation succeeds",
+      "unchanged": "contains the exact prior snapshot when no mutation occurred and no new snapshot was published",
+      "unavailable": "contains no fabricated snapshot; reports last_published_generation and a typed observation code",
+      "unavailable_requires_typed_code": true,
+      "unavailable_codes_minimum": ["root_unreachable_after_operation", "snapshot_read_failed", "root_removed"],
+      "partial_view_states": ["complete", "partial"],
+      "false_empty_forbidden": true
+    },
+    "path_authority": {
+      "owner": "main_process",
+      "single_segment_name_validation": ["empty", "dot", "dotdot", "separator", "absolute", "ADS", "reserved", "NUL"],
+      "default_conflict_policy": "refuse_without_overwrite",
+      "cross_device_move": "unsupported_not_an_acceptance_subject",
+      "reparse": {
+        "visible_in_view": true,
+        "selected_root": "refused_if_reparse",
+        "traversal": "refused",
+        "mutation": "refused",
+        "string_containment_security_claim": false,
+        "later_revision_requires": "handle-based or equivalently evidenced confinement before any in-root reparse permission"
+      }
+    }
+  },
+  "deferred_capabilities": [
+    {
+      "id": "open-with-default-application",
+      "state": "deferred",
+      "in_active_denominator": false,
+      "rationale": "Electron and the Windows default-application route do not promise a new child PID and may reuse an existing process. A test helper would measure a different operation.",
+      "forbidden_evidence": ["stub_reported_as_native", "process_name_census", "guessed_pid", "manual_observation_as_acceptance"],
+      "revisit_gate": "a bounded native acceptance can identify ownership and clean only processes it launched without changing the default-application operation"
+    }
+  ],
+  "excluded_scope": [
+    "empty-file creation",
+    "permanent delete",
+    "cross-device move",
+    "whole-system drive browsing",
+    "dual-pane operation",
+    "cloud and network shares",
+    "archive extraction",
+    "content search",
+    "thumbnails",
+    "permission editor",
+    "hidden shell namespaces",
+    "background indexing",
+    "automatic remembered-root persistence",
+    "filesystem watcher or live-sync claims"
+  ],
+  "fixture_contract": {
+    "materialization_owner": "independent_acceptance",
+    "product_may_not_generate_expected_values": true,
+    "root_location": "fresh D-drive scratch directory created per run; never a user folder",
+    "dynamic_subjects": [
+      { "id": "escape-junction", "precondition": "create a junction inside the root targeting a disposable directory outside it", "did_not_apply": "acceptance failure, not a caught attack" },
+      { "id": "locked-member", "precondition": "hold a process-owned Windows handle that independently proves the intended mutation is denied", "cleanup": "close only that exact handle/process in finally" },
+      { "id": "unreadable-entry", "precondition": "deny enumeration on one disposable child and prove denial before the view action", "cleanup": "restore that exact child ACL in finally" }
+    ],
+    "entries": [
+      { "path": "nav", "kind": "directory" },
+      { "path": "nav/child.txt", "kind": "file", "bytes": 10, "sha256": "0ab4d6b3580044ca2e49b168151a9a0b0ab74727116a70cee4436392ccac4554", "payload_hex": "6e61762d6368696c640a" },
+      { "path": "copy-file.bin", "kind": "file", "bytes": 12, "sha256": "de9889539d13ce918a1d0c52401c6f9e81165c15e9105ca1164a66514f3a3541", "payload_hex": "000102037f80feff0a0d0055" },
+      { "path": "copy-dir", "kind": "directory" },
+      { "path": "copy-dir/nested", "kind": "directory" },
+      { "path": "copy-dir/nested/a.txt", "kind": "file", "bytes": 7, "sha256": "02e50abb57af87e0d412b0716df5f63467043af15bfbbc4beb1a718879edfa40", "payload_hex": "636f70792d610a" },
+      { "path": "copy-dir/nested/deeper", "kind": "directory" },
+      { "path": "copy-dir/nested/deeper/b.bin", "kind": "file", "bytes": 16, "sha256": "b8cc97e42589886e7f720eb36243e9a0bc756f355919eefcf0c3cab03476f7c0", "payload_hex": "00ff102030405060708090a0b0c0d0e0" },
+      { "path": "copy-dir/empty", "kind": "directory" },
+      { "path": "move-file.txt", "kind": "file", "bytes": 10, "sha256": "4478f3d2e303a3e32398977ad9a9341d6990372e83f5f9575b869dfed07fd983", "payload_hex": "6d6f76652d66696c650a" },
+      { "path": "move-dir", "kind": "directory" },
+      { "path": "move-dir/nested.txt", "kind": "file", "bytes": 15, "sha256": "c48c8a7e5ee3cf9b9b334317b0f0e08c15f30126edaa61baeba8aaeeabeea203", "payload_hex": "6d6f76652d6469722d6368696c640a" },
+      { "path": "trash-file.txt", "kind": "file", "bytes": 11, "sha256": "223ac4a81c7122a6af966aa9adb1df7c806cb495e47010e587c6cd75c4182114", "payload_hex": "74726173682d66696c650a" },
+      { "path": "trash-dir", "kind": "directory" },
+      { "path": "trash-dir/nested.txt", "kind": "file", "bytes": 16, "sha256": "08fc11e57a3d07063128f62abb5cbd47d70c3002c8c56a6b900fea2af96467c8", "payload_hex": "74726173682d6469722d6368696c640a" },
+      { "path": "partial", "kind": "directory" },
+      { "path": "partial/ok.bin", "kind": "file", "bytes": 8, "sha256": "a988e1e25ad1f6b00f91fb68e8eec8b68b8bfd6ff1f8eaca2f121d075a35bf78", "payload_hex": "deadbeef00112233" },
+      { "path": "partial/locked.bin", "kind": "file", "bytes": 8, "sha256": "f78d2b3f2e61b1f7ff5404b8e97589c3c7eb558fbd292900acd562aa58ebe9f8", "payload_hex": "cafebabe44556677" },
+      { "path": "conflicts", "kind": "directory" },
+      { "path": "conflicts/existing-name.txt", "kind": "file", "bytes": 9, "sha256": "d32cf044872a37e6439d9055f90a0da11f1e0b07fa4e79d6ec710764ce1e206a", "payload_hex": "6578697374696e670a" },
+      { "path": "refresh", "kind": "directory" },
+      { "path": "refresh/base.txt", "kind": "file", "bytes": 5, "sha256": "f34848ca92665c342abd5816c9e3eda0e82180671195362bcd0080544a3bc2ac", "payload_hex": "626173650a" },
+      { "path": "rename-me.txt", "kind": "file", "bytes": 10, "sha256": "24ce986fb2d2e07e06ffa556b4e6795071033ef13947e74e8f67aa701ca86905", "payload_hex": "72656e616d652d6d650a" },
+      { "path": "dest-copy", "kind": "directory" },
+      { "path": "dest-move", "kind": "directory" }
+    ]
+  },
+  "performance": "NotMeasured",
+  "timing_policy": {
+    "purpose": "hang detection only; no fast, responsive or cross-machine latency verdict",
+    "per_gui_action_hard_cap_seconds": 30,
+    "workflow_hard_cap_seconds": 180,
+    "environment_recorded": ["CPU", "RAM", "storage", "Windows build", "Electron version", "background-load note"],
+    "bounded_actions": [
+      { "id": "copy-directory-tree", "trigger": "one_gui_batch_command", "subject": "copy-dir exact manifest subtree", "timer_start": "renderer dispatch of the user command", "timer_stop": "overall result and snapshot state are rendered", "forbidden_substitution": "test-side per-entry loop, pre-copy, internal service call or different fixture" },
+      { "id": "move-directory-tree", "trigger": "one_gui_batch_command", "subject": "move-dir exact manifest subtree", "timer_start": "renderer dispatch of the user command", "timer_stop": "overall result and snapshot state are rendered", "forbidden_substitution": "test-side per-entry loop, pre-move, internal service call or different fixture" }
+    ]
+  },
+  "comparator": {
+    "mode": "executable_operation_core",
+    "scope": "one conventional main-process filesystem operation-core artifact; not a second GUI product",
+    "compared_capabilities": ["directory-view", "navigate-within-root", "refresh-external-change", "create-directory", "rename-entry", "copy-entries", "move-entries", "trash-entries"],
+    "gui_only_capabilities_not_compared": ["choose-root", "entry-selection"],
+    "same_subject": "same main-process operation subset, pinned fixture manifest, operation vectors and independent tree-and-byte oracle",
+    "topology": "ordinary imperative handlers with no predeclared MSSP set decomposition",
+    "counted_artifacts": ["comparators/file-manager-basic/operation-core.ts", "comparators/file-manager-basic/operation-core.test.mjs"],
+    "pre_registered_before_results": true,
+    "quantitative_claim_gate": "implementation size, defect, blast-radius or verification-effort comparisons require the executable comparator and the same bounded protocol; otherwise each is NotMeasured",
+    "causal_claim_allowed": false
+  },
+  "topology": {
+    "preregistered": false,
+    "what_is_preregistered": "product, capability, cross-cutting contract, fixture, evidence and comparator boundaries only",
+    "forbidden_default": "do not copy App-1 module topology, document capabilities or encoding boundaries into App 2",
+    "next_step": "three architects derive and attest a separate App-2 MSSP core after this preregistration survives attack"
+  },
+  "membership": {
+    "labels_are_role_claims_not_runtime_identity": true,
+    "preregistration_author": "Metron",
+    "first_independent_attacker": "Elenchos",
+    "denominator_and_acceptance_attacker": "Pragma",
+    "implementation_builder": "unassigned",
+    "role_change": "any reviewer who edits later product code becomes a builder for that exact commit and cannot supply the only independent acceptance"
+  },
+  "attack_protocol": {
+    "general": [
+      "denominator deletion or reclassification after results",
+      "product-01 topology or capability copy",
+      "foundation stuffing and cheap-share expensive-adaptation laundering",
+      "paper-comparator laundering",
+      "author tests accepted as independent evidence",
+      "native/stubbed evidence relabeling"
+    ],
+    "slice_specific": [
+      "generation is misread as a mutation counter instead of snapshot identity",
+      "partial mutation plus unavailable post-operation scan is forced into a fabricated current or unchanged snapshot",
+      "policy refusal and admitted execution failure collapse into one status",
+      "old snapshot ID mutates a same-name replacement",
+      "reparse string containment is cited as race-safe authority",
+      "one batch result omits a requested entry or flattens partial failure",
+      "copy or move timing measures a test-side loop or different subject",
+      "file-only behavior is reported as directory support",
+      "source disappearance is reported as Recycle Bin recoverability",
+      "permanent delete is exposed as a fallback"
+    ]
+  },
+  "stop_boundary": "This artifact authorizes only preregistration review. No App-2 product record or production code begins until the exact preregistration is green under its own verifier and drills, Elenchos completes first independent attack, Pragma completes denominator/acceptance-row attack, and all three architects approve the exact digest. Product implementation additionally requires a separately agreed App-2 MSSP core, work package, pinned fixture materialization and acceptance ownership. No provider call, main merge, release, deployment, publication or MSSP method adoption is authorized here."
+}
