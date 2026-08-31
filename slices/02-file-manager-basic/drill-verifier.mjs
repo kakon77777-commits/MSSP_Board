@@ -414,6 +414,63 @@ const drills = [
     }),
   },
   {
+    label: "silently reclassify cancellation guard as execution failure",
+    expect: "attack class outcome axes",
+    apply: mutateJson((d) => {
+      const row = d.acceptance_rows?.["FM-ROOT-CANCEL"];
+      if (!row?.oracle?.includes("operation_status=cancelled")) return false;
+      row.expected_outcomes.operation_statuses = ["failed"];
+      row.oracle = row.oracle
+        .replace("operation_status=cancelled", "operation_status=failed")
+        .replace("is cancelled rather than refused", "is failed after admitted execution");
+      return true;
+    }),
+  },
+  {
+    label: "co-mutate cancellation class outcomes and oracle",
+    expect: "attack class",
+    apply: mutateJson((d) => {
+      const row = d.acceptance_rows?.["FM-ROOT-CANCEL"];
+      if (row?.attack_class !== "cancellation_guard") return false;
+      row.attack_class = "execution_failure";
+      row.expected_outcomes.operation_statuses = ["failed"];
+      row.oracle = row.oracle
+        .replace("operation_status=cancelled", "operation_status=failed")
+        .replace("is cancelled rather than refused", "is failed after admitted execution");
+      return true;
+    }),
+  },
+  {
+    label: "remove an attack class",
+    expect: "exact row fields",
+    apply: mutateJson((d) => {
+      const row = d.acceptance_rows?.["FM-ROOT-CANCEL"];
+      if (!row || row.attack_class === undefined) return false;
+      delete row.attack_class;
+      return true;
+    }),
+  },
+  {
+    label: "invent an unknown attack class",
+    expect: "attack class",
+    apply: mutateJson((d) => {
+      const row = d.acceptance_rows?.["FM-ROOT-CANCEL"];
+      if (!row || row.attack_class !== "cancellation_guard") return false;
+      row.attack_class = "generic_adverse";
+      return true;
+    }),
+  },
+  {
+    label: "attach an attack class to a positive row",
+    expect: "positive attack class",
+    apply: mutateJson((d) => {
+      const row = d.acceptance_rows?.["FM-ROOT-SELECT"];
+      if (!row || row.attack_class !== null) return false;
+      row.attack_class = "policy_refusal";
+      return true;
+    }),
+  },
+  {
     label: "remove the directory positive row from copy",
     expect: "copy-entries",
     apply: mutateJson((d) => {

@@ -24,7 +24,8 @@ const DENOMINATOR = [
   "move-entries", "trash-entries",
 ];
 const ROW_FIELDS = [
-  "capability", "polarity", "expected_outcomes", "action", "oracle", "failure_signal",
+  "capability", "polarity", "attack_class", "expected_outcomes", "action", "oracle",
+  "failure_signal",
 ];
 const EXPECTED_OUTCOME_FIELDS = ["operation_statuses", "snapshot_states", "view_states"];
 const OPERATION_STATUSES = ["accepted", "cancelled", "refused", "failed", "partial"];
@@ -49,6 +50,43 @@ const REQUIRED_SPECIAL_ROWS = {
   "move-entries": ["FM-MOVE-FILE", "FM-MOVE-DIRECTORY"],
   "trash-entries": ["FM-TRASH-FILE", "FM-TRASH-DIRECTORY"],
 };
+const ATTACK_CLASS_OUTCOMES = Object.freeze({
+  cancellation_guard: {
+    operation_statuses: ["cancelled"], snapshot_states: ["unchanged"], view_states: [],
+  },
+  policy_refusal: {
+    operation_statuses: ["refused"], snapshot_states: ["unchanged"], view_states: [],
+  },
+  execution_failure: {
+    operation_statuses: ["failed"], snapshot_states: ["unchanged"], view_states: [],
+  },
+  partial_execution: {
+    operation_statuses: ["partial"], snapshot_states: ["current"], view_states: [],
+  },
+  partial_observation: {
+    operation_statuses: [], snapshot_states: ["current"], view_states: ["partial"],
+  },
+  mixed_refusal_failure: {
+    operation_statuses: ["refused", "failed"], snapshot_states: ["unchanged"], view_states: [],
+  },
+});
+const ACCEPTANCE_ATTACK_CLASSES = Object.freeze({
+  "FM-ROOT-CANCEL": "cancellation_guard",
+  "FM-ROOT-FAIL": "execution_failure",
+  "FM-ROOT-REFUSE": "policy_refusal",
+  "FM-ROOT-REPARSE": "policy_refusal",
+  "FM-VIEW-PARTIAL": "partial_observation",
+  "FM-NAV-ESCAPE": "policy_refusal",
+  "FM-REFRESH-STALE": "policy_refusal",
+  "FM-SELECT-STALE": "policy_refusal",
+  "FM-CREATE-REFUSE": "policy_refusal",
+  "FM-RENAME-CONFLICT": "policy_refusal",
+  "FM-COPY-PARTIAL": "partial_execution",
+  "FM-COPY-CONFLICT": "policy_refusal",
+  "FM-MOVE-PARTIAL": "partial_execution",
+  "FM-MOVE-CONFLICT": "policy_refusal",
+  "FM-TRASH-REFUSE": "mixed_refusal_failure",
+});
 const REQUIRED_FIXTURES = [
   "nav", "nav/child.txt", "copy-file.bin", "copy-dir", "copy-dir/nested/a.txt",
   "copy-dir/nested/deeper/b.bin", "copy-dir/empty", "move-file.txt", "move-dir",
@@ -255,13 +293,24 @@ export function verify(root = ROOT) {
           && new Set(viewStates).size === viewStates.length
           && viewStates.every((state) => VIEW_STATES.includes(state))
           && (isDirectoryView ? viewStates.length === 1 : viewStates.length === 0));
+        const expectedAttackClass = ACCEPTANCE_ATTACK_CLASSES[id];
+        const attackClassOutcomes = ATTACK_CLASS_OUTCOMES[row.attack_class];
         if (row.polarity === "positive") {
+          check(`${id} positive attack class`, row.attack_class === null
+            && expectedAttackClass === undefined);
           check(`${id} positive expected results`, sameArray(snapshotStates, ["current"])
             && (isDirectoryView
               ? sameArray(statuses, []) && sameArray(viewStates, ["complete"])
               : sameArray(statuses, ["accepted"]) && sameArray(viewStates, [])));
         }
         if (row.polarity === "attack") {
+          check(`${id} attack class`, nonempty(row.attack_class)
+            && row.attack_class === expectedAttackClass
+            && attackClassOutcomes !== undefined);
+          check(`${id} attack class outcome axes`, attackClassOutcomes !== undefined
+            && sameArray(statuses, attackClassOutcomes.operation_statuses)
+            && sameArray(snapshotStates, attackClassOutcomes.snapshot_states)
+            && sameArray(viewStates, attackClassOutcomes.view_states));
           const hasAdverseOutcome = (Array.isArray(statuses)
               && statuses.some((status) => ATTACK_OPERATION_STATUSES.includes(status)))
             || snapshotStates?.includes("unavailable")
@@ -297,6 +346,15 @@ export function verify(root = ROOT) {
       `${mapped.length - unique.size} duplicate mapping(s)`);
     const orphan = Object.keys(rows).filter((id) => !unique.has(id));
     check("orphan acceptance rows", orphan.length === 0, orphan.join(", "));
+    const attackIds = Object.entries(rows)
+      .filter(([, row]) => row?.polarity === "attack")
+      .map(([id]) => id)
+      .sort();
+    check("attack class map exact IDs",
+      sameArray(Object.keys(ACCEPTANCE_ATTACK_CLASSES).sort(), attackIds));
+    check("attack class vocabulary exact",
+      sameArray([...new Set(Object.values(ACCEPTANCE_ATTACK_CLASSES))].sort(),
+        Object.keys(ATTACK_CLASS_OUTCOMES).sort()));
   }
   for (const [capability, ids] of Object.entries(REQUIRED_SPECIAL_ROWS)) {
     const found = map?.[capability] ?? [];
