@@ -257,6 +257,68 @@ const drills = [
     }),
   },
   {
+    label: "make an attack oracle describe successful mutation",
+    expect: "expected results",
+    apply: mutateJson((d) => {
+      const row = d.acceptance_rows?.["FM-ROOT-REFUSE"];
+      if (!row || row.polarity !== "attack") return false;
+      row.oracle = "operation completed and entries were written";
+      return true;
+    }),
+  },
+  {
+    label: "copy an attack oracle into its failure signal",
+    expect: "oracle and failure signal",
+    apply: mutateJson((d) => {
+      const row = d.acceptance_rows?.["FM-ROOT-REFUSE"];
+      if (!row || row.failure_signal === row.oracle) return false;
+      row.failure_signal = row.oracle;
+      return true;
+    }),
+  },
+  {
+    label: "add an unknown cap-breach policy field",
+    expect: "cap breach policy exact fields",
+    apply: mutateJson((d) => {
+      const policy = d.timing_policy?.cap_breach_policy;
+      if (!policy || Object.hasOwn(policy, "unreviewed_extra")) return false;
+      policy.unreviewed_extra = "accepted by an open schema";
+      return true;
+    }),
+  },
+  {
+    label: "turn an attack row into accepted current outcomes",
+    expect: "attack expected results",
+    apply: mutateJson((d) => {
+      const row = d.acceptance_rows?.["FM-ROOT-REFUSE"];
+      if (!row?.expected_outcomes) return false;
+      row.expected_outcomes.operation_statuses = ["accepted"];
+      row.expected_outcomes.snapshot_states = ["current"];
+      row.oracle = "operation is accepted and written entries become current";
+      return true;
+    }),
+  },
+  {
+    label: "remove structured outcomes from an attack row",
+    expect: "exact row fields",
+    apply: mutateJson((d) => {
+      const row = d.acceptance_rows?.["FM-ROOT-REFUSE"];
+      if (!row?.expected_outcomes) return false;
+      delete row.expected_outcomes;
+      return true;
+    }),
+  },
+  {
+    label: "copy a system oracle into its failure signal",
+    expect: "oracle and failure signal",
+    apply: mutateJson((d) => {
+      const row = d.system_acceptance_rows?.["FM-SYS-SNAPSHOT-UNAVAILABLE"];
+      if (!row || row.failure_signal === row.oracle) return false;
+      row.failure_signal = row.oracle;
+      return true;
+    }),
+  },
+  {
     label: "remove the directory positive row from copy",
     expect: "copy-entries",
     apply: mutateJson((d) => {

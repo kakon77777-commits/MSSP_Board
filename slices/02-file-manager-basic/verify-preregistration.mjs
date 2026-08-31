@@ -23,7 +23,13 @@ const DENOMINATOR = [
   "entry-selection", "create-directory", "rename-entry", "copy-entries",
   "move-entries", "trash-entries",
 ];
-const ROW_FIELDS = ["capability", "polarity", "action", "oracle", "failure_signal"];
+const ROW_FIELDS = [
+  "capability", "polarity", "expected_outcomes", "action", "oracle", "failure_signal",
+];
+const EXPECTED_OUTCOME_FIELDS = ["operation_statuses", "snapshot_states"];
+const OPERATION_STATUSES = ["accepted", "cancelled", "refused", "failed", "partial"];
+const ATTACK_OPERATION_STATUSES = ["cancelled", "refused", "failed", "partial"];
+const SNAPSHOT_STATES = ["current", "unchanged", "unavailable"];
 const SYSTEM_ROW_FIELDS = ["action", "oracle", "failure_signal", "covered_by", "dynamic_subjects"];
 const DYNAMIC_SUBJECT_FIELDS = [
   "id", "paths", "operation", "precondition", "precondition_proof",
@@ -73,6 +79,11 @@ const validDate = (value) => {
 const exactKeys = (object, expected) => object !== null && typeof object === "object"
   && !Array.isArray(object)
   && sameArray(Object.keys(object).sort(), [...expected].sort());
+const normalizedProse = (value) => typeof value === "string"
+  ? value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()
+  : "";
+const namesOutcome = (value, outcome) => new RegExp(`\\b${outcome}\\b`, "u")
+  .test(normalizedProse(value));
 const sha256 = (bytes) => crypto.createHash("sha256").update(bytes).digest("hex");
 
 // Recursive JSON scanner that decodes object-key escapes before comparing. A
@@ -226,6 +237,33 @@ export function verify(root = ROOT) {
         for (const field of ["action", "oracle", "failure_signal"]) {
           check(`${id} ${field}`, nonempty(row[field]));
         }
+        const outcomes = row.expected_outcomes;
+        check(`${id} expected results fields`, exactKeys(outcomes, EXPECTED_OUTCOME_FIELDS));
+        const statuses = outcomes?.operation_statuses;
+        const snapshotStates = outcomes?.snapshot_states;
+        check(`${id} expected operation statuses`, Array.isArray(statuses)
+          && statuses.length > 0
+          && new Set(statuses).size === statuses.length
+          && statuses.every((status) => OPERATION_STATUSES.includes(status)));
+        check(`${id} expected snapshot states`, Array.isArray(snapshotStates)
+          && snapshotStates.length > 0
+          && new Set(snapshotStates).size === snapshotStates.length
+          && snapshotStates.every((state) => SNAPSHOT_STATES.includes(state)));
+        if (row.polarity === "positive") {
+          check(`${id} positive expected results`, sameArray(statuses, ["accepted"])
+            && sameArray(snapshotStates, ["current"]));
+        }
+        if (row.polarity === "attack") {
+          check(`${id} attack expected results`, Array.isArray(statuses)
+            && statuses.length > 0
+            && statuses.every((status) => ATTACK_OPERATION_STATUSES.includes(status)));
+        }
+        if (Array.isArray(statuses) && Array.isArray(snapshotStates)) {
+          check(`${id} oracle names expected results`, [...statuses, ...snapshotStates]
+            .every((outcome) => namesOutcome(row.oracle, outcome)));
+        }
+        check(`${id} oracle and failure signal differ`, normalizedProse(row.oracle) !== ""
+          && normalizedProse(row.oracle) !== normalizedProse(row.failure_signal));
       }
       check(`${capability} positive and attack rows`, polarities.has("positive") && polarities.has("attack"));
     }
@@ -274,6 +312,9 @@ export function verify(root = ROOT) {
       for (const field of ["action", "oracle", "failure_signal"]) {
         check(`system acceptance ${id} ${field}`, nonempty(row[field]));
       }
+      check(`system acceptance ${id} oracle and failure signal differ`,
+        normalizedProse(row.oracle) !== ""
+        && normalizedProse(row.oracle) !== normalizedProse(row.failure_signal));
       check(`system acceptance ${id} covered_by`, Array.isArray(row.covered_by)
         && row.covered_by.every((acceptanceId) => rows?.[acceptanceId] !== undefined));
       check(`system acceptance ${id} dynamic_subjects`, Array.isArray(row.dynamic_subjects)
@@ -481,6 +522,10 @@ export function verify(root = ROOT) {
     && document.timing_policy?.workflow_hard_cap_seconds === 180);
   const capPolicy = document.timing_policy?.cap_breach_policy;
   const capClassifications = capPolicy?.classifications;
+  check("cap breach policy exact fields", exactKeys(capPolicy,
+    ["classification_required", "classifications", "required_record_fields",
+      "direct_timeout_to_product_failure", "silent_cap_increase",
+      "route_or_subject_substitution"]));
   check("cap breach policy", capPolicy?.classification_required === true
     && exactKeys(capClassifications,
       ["product_hang", "instrument_subject_mismatch", "environment_limit"])
