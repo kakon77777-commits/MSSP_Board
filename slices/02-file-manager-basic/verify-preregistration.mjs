@@ -26,10 +26,11 @@ const DENOMINATOR = [
 const ROW_FIELDS = [
   "capability", "polarity", "expected_outcomes", "action", "oracle", "failure_signal",
 ];
-const EXPECTED_OUTCOME_FIELDS = ["operation_statuses", "snapshot_states"];
+const EXPECTED_OUTCOME_FIELDS = ["operation_statuses", "snapshot_states", "view_states"];
 const OPERATION_STATUSES = ["accepted", "cancelled", "refused", "failed", "partial"];
 const ATTACK_OPERATION_STATUSES = ["cancelled", "refused", "failed", "partial"];
 const SNAPSHOT_STATES = ["current", "unchanged", "unavailable"];
+const VIEW_STATES = ["complete", "partial"];
 const SYSTEM_ROW_FIELDS = ["action", "oracle", "failure_signal", "covered_by", "dynamic_subjects"];
 const DYNAMIC_SUBJECT_FIELDS = [
   "id", "paths", "operation", "precondition", "precondition_proof",
@@ -82,8 +83,7 @@ const exactKeys = (object, expected) => object !== null && typeof object === "ob
 const normalizedProse = (value) => typeof value === "string"
   ? value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()
   : "";
-const namesOutcome = (value, outcome) => new RegExp(`\\b${outcome}\\b`, "u")
-  .test(normalizedProse(value));
+const outcomeMarker = (axis, outcome) => `${axis}=${outcome}`;
 const sha256 = (bytes) => crypto.createHash("sha256").update(bytes).digest("hex");
 
 // Recursive JSON scanner that decodes object-key escapes before comparing. A
@@ -241,26 +241,45 @@ export function verify(root = ROOT) {
         check(`${id} expected results fields`, exactKeys(outcomes, EXPECTED_OUTCOME_FIELDS));
         const statuses = outcomes?.operation_statuses;
         const snapshotStates = outcomes?.snapshot_states;
+        const viewStates = outcomes?.view_states;
+        const isDirectoryView = capability === "directory-view";
         check(`${id} expected operation statuses`, Array.isArray(statuses)
-          && statuses.length > 0
           && new Set(statuses).size === statuses.length
-          && statuses.every((status) => OPERATION_STATUSES.includes(status)));
+          && statuses.every((status) => OPERATION_STATUSES.includes(status))
+          && (isDirectoryView ? statuses.length === 0 : statuses.length > 0));
         check(`${id} expected snapshot states`, Array.isArray(snapshotStates)
           && snapshotStates.length > 0
           && new Set(snapshotStates).size === snapshotStates.length
           && snapshotStates.every((state) => SNAPSHOT_STATES.includes(state)));
+        check(`${id} expected view states`, Array.isArray(viewStates)
+          && new Set(viewStates).size === viewStates.length
+          && viewStates.every((state) => VIEW_STATES.includes(state))
+          && (isDirectoryView ? viewStates.length === 1 : viewStates.length === 0));
         if (row.polarity === "positive") {
-          check(`${id} positive expected results`, sameArray(statuses, ["accepted"])
-            && sameArray(snapshotStates, ["current"]));
+          check(`${id} positive expected results`, sameArray(snapshotStates, ["current"])
+            && (isDirectoryView
+              ? sameArray(statuses, []) && sameArray(viewStates, ["complete"])
+              : sameArray(statuses, ["accepted"]) && sameArray(viewStates, [])));
         }
         if (row.polarity === "attack") {
-          check(`${id} attack expected results`, Array.isArray(statuses)
-            && statuses.length > 0
-            && statuses.every((status) => ATTACK_OPERATION_STATUSES.includes(status)));
+          const hasAdverseOutcome = (Array.isArray(statuses)
+              && statuses.some((status) => ATTACK_OPERATION_STATUSES.includes(status)))
+            || snapshotStates?.includes("unavailable")
+            || viewStates?.includes("partial");
+          check(`${id} attack expected results`, hasAdverseOutcome
+            && (isDirectoryView
+              ? sameArray(statuses, []) && sameArray(viewStates, ["partial"])
+              : statuses?.every((status) => ATTACK_OPERATION_STATUSES.includes(status))
+                && sameArray(viewStates, [])));
         }
-        if (Array.isArray(statuses) && Array.isArray(snapshotStates)) {
-          check(`${id} oracle names expected results`, [...statuses, ...snapshotStates]
-            .every((outcome) => namesOutcome(row.oracle, outcome)));
+        if (Array.isArray(statuses) && Array.isArray(snapshotStates) && Array.isArray(viewStates)) {
+          const markers = [
+            ...statuses.map((status) => outcomeMarker("operation_status", status)),
+            ...snapshotStates.map((state) => outcomeMarker("snapshot_state", state)),
+            ...viewStates.map((state) => outcomeMarker("view_state", state)),
+          ];
+          check(`${id} oracle names expected results`, markers
+            .every((marker) => row.oracle.includes(marker)));
         }
         check(`${id} oracle and failure signal differ`, normalizedProse(row.oracle) !== ""
           && normalizedProse(row.oracle) !== normalizedProse(row.failure_signal));

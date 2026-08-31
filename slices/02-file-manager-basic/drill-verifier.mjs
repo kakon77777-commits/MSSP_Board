@@ -319,6 +319,26 @@ const drills = [
     }),
   },
   {
+    label: "relabel partial directory view as complete",
+    expect: "oracle names expected results",
+    apply: mutateJson((d) => {
+      const row = d.acceptance_rows?.["FM-VIEW-PARTIAL"];
+      if (!row || row.polarity !== "attack") return false;
+      row.oracle = "overall operation status is partial and the current snapshot is complete";
+      return true;
+    }),
+  },
+  {
+    label: "relabel complete directory view as partial",
+    expect: "oracle names expected results",
+    apply: mutateJson((d) => {
+      const row = d.acceptance_rows?.["FM-VIEW-MANIFEST"];
+      if (!row || row.polarity !== "positive") return false;
+      row.oracle = "result is accepted and the current snapshot is partial";
+      return true;
+    }),
+  },
+  {
     label: "remove the directory positive row from copy",
     expect: "copy-entries",
     apply: mutateJson((d) => {
