@@ -9,7 +9,7 @@
 // The executable proof that these checks can fail is portfolio/drill-portfolio.mjs.
 // It is a separate file on purpose: a comment claiming an attack was tried is
 // exactly the prose this repo does not accept.
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -94,6 +94,9 @@ function gitBuffer(args) {
 function gitOk(args) {
   try { execFileSync("git", args, { cwd: repo, stdio: "pipe" }); return true; }
   catch { return false; }
+}
+function gitResult(args) {
+  return spawnSync("git", args, { cwd: repo, encoding: "utf8" });
 }
 const commitExists = (sha) => gitOk(["cat-file", "-e", `${sha}^{commit}`]);
 const reachable = (sha) => gitOk(["merge-base", "--is-ancestor", sha, CANONICAL_REF]);
@@ -451,6 +454,42 @@ function checkExecutionSnapshot(where, record) {
   }
 }
 
+function checkClosedSubjectFreshness(where, record) {
+  const closeCommit = record.close?.commit;
+  if (!fullSha(closeCommit) || !commitExists(closeCommit)) return;
+
+  for (const key of ["app_path", "denominator_ref"]) {
+    const subject = checkRepoRelative(where, record[key]);
+    if (subject === null) continue;
+
+    const committed = gitResult(["diff", "--quiet", closeCommit, "HEAD", "--", subject]);
+    if (![0, 1].includes(committed.status)) {
+      fail(where, `${key} freshness comparison failed: ${committed.stderr.trim() || `git exit ${committed.status}`}`);
+    } else if (committed.status === 1) {
+      fail(where, `${key} ${subject} has committed drift since close ${closeCommit.slice(0, 12)}`);
+    }
+
+    const working = gitResult(["diff", "--quiet", closeCommit, "--", subject]);
+    if (![0, 1].includes(working.status)) {
+      fail(where, `${key} working-tree comparison failed: ${working.stderr.trim() || `git exit ${working.status}`}`);
+    } else if (committed.status === 0 && working.status === 1) {
+      fail(where, `${key} ${subject} has tracked working-tree drift since close ${closeCommit.slice(0, 12)}`);
+    }
+
+    const untracked = gitResult(["ls-files", "--others", "--exclude-standard", "--", subject]);
+    if (untracked.status !== 0) {
+      fail(where, `${key} untracked-file check failed: ${untracked.stderr.trim() || `git exit ${untracked.status}`}`);
+    } else {
+      const paths = untracked.stdout.trim() === "" ? [] : untracked.stdout.trim().split(/\r?\n/);
+      if (paths.length > 0) {
+        const shown = paths.slice(0, 3).join(", ");
+        fail(where, `${key} has nonignored untracked product files: ${shown}`
+          + `${paths.length > 3 ? ` (+${paths.length - 3} more)` : ""}`);
+      }
+    }
+  }
+}
+
 // ---------------------------------------------------------------- roadmap
 const roadmap = checkStrictJson("roadmap.json", ROADMAP_FIELDS);
 const roadmapSlugs = new Map();
@@ -725,6 +764,7 @@ for (const [position, { record, file }] of records) {
     }
   }
   checkExecutionSnapshot(where, record);
+  checkClosedSubjectFreshness(where, record);
   const closedOwners = OWNER_FIELDS.map((key) => record.owners?.[key]);
   if (new Set(closedOwners).size !== OWNER_FIELDS.length
       || !CLOSED_OWNER_LABELS.every((label) => closedOwners.includes(label))) {
@@ -762,6 +802,7 @@ if (failures.length === 0) {
   process.stdout.write(`  ok   repository evidence resolves; every close is reachable from ${CANONICAL_REF}, `
     + "its tree matches, and its local decision snapshot agrees\n");
   process.stdout.write("  ok   measured values bind registered commands, local result captures and candidate operands\n");
+  process.stdout.write("  ok   technically closed app and denominator subjects remain current in this checkout\n");
   process.stdout.write("  ok   external digests are recorded provenance only; they are not claimed locally resolved\n");
   process.stdout.write("  ok   the generated index and README match the records\n");
   for (const [position, { record }] of records) {
