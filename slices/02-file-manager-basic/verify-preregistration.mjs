@@ -278,8 +278,14 @@ export function verify(root = ROOT) {
             ...snapshotStates.map((state) => outcomeMarker("snapshot_state", state)),
             ...viewStates.map((state) => outcomeMarker("view_state", state)),
           ];
+          const foundMarkers = [...row.oracle.matchAll(/\b([a-z_]+)=([a-z_]+)\b/g)]
+            .map((match) => `${match[1]}=${match[2]}`);
           check(`${id} oracle names expected results`, markers
             .every((marker) => row.oracle.includes(marker)));
+          check(`${id} oracle markers exactly match expected results`,
+            foundMarkers.length === markers.length
+            && new Set(foundMarkers).size === foundMarkers.length
+            && markers.every((marker) => foundMarkers.includes(marker)));
         }
         check(`${id} oracle and failure signal differ`, normalizedProse(row.oracle) !== ""
           && normalizedProse(row.oracle) !== normalizedProse(row.failure_signal));

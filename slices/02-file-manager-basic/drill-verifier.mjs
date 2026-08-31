@@ -339,6 +339,81 @@ const drills = [
     }),
   },
   {
+    label: "append contradictory complete marker to partial view",
+    expect: "oracle markers exactly match expected results",
+    apply: mutateJson((d) => {
+      const row = d.acceptance_rows?.["FM-VIEW-PARTIAL"];
+      if (!row?.oracle?.includes("view_state=partial")
+          || row.oracle.includes("view_state=complete")) return false;
+      row.oracle = row.oracle.replace(
+        "view_state=partial",
+        "view_state=partial; view_state=complete",
+      );
+      return true;
+    }),
+  },
+  {
+    label: "append contradictory accepted marker to refusal",
+    expect: "oracle markers exactly match expected results",
+    apply: mutateJson((d) => {
+      const row = d.acceptance_rows?.["FM-ROOT-REFUSE"];
+      if (!row?.oracle?.includes("operation_status=refused")
+          || row.oracle.includes("operation_status=accepted")) return false;
+      row.oracle = row.oracle.replace(
+        "operation_status=refused",
+        "operation_status=refused; operation_status=accepted",
+      );
+      return true;
+    }),
+  },
+  {
+    label: "append contradictory current marker to unchanged snapshot",
+    expect: "oracle markers exactly match expected results",
+    apply: mutateJson((d) => {
+      const row = d.acceptance_rows?.["FM-ROOT-REFUSE"];
+      if (!row?.oracle?.includes("snapshot_state=unchanged")
+          || row.oracle.includes("snapshot_state=current")) return false;
+      row.oracle = row.oracle.replace(
+        "snapshot_state=unchanged",
+        "snapshot_state=unchanged; snapshot_state=current",
+      );
+      return true;
+    }),
+  },
+  {
+    label: "duplicate an expected oracle marker",
+    expect: "oracle markers exactly match expected results",
+    apply: mutateJson((d) => {
+      const row = d.acceptance_rows?.["FM-ROOT-REFUSE"];
+      if (!row?.oracle?.includes("snapshot_state=unchanged")) return false;
+      row.oracle = row.oracle.replace(
+        "snapshot_state=unchanged",
+        "snapshot_state=unchanged; snapshot_state=unchanged",
+      );
+      return true;
+    }),
+  },
+  {
+    label: "append an unknown outcome axis",
+    expect: "oracle markers exactly match expected results",
+    apply: mutateJson((d) => {
+      const row = d.acceptance_rows?.["FM-ROOT-REFUSE"];
+      if (!row?.oracle || row.oracle.includes("view_mode=partial")) return false;
+      row.oracle = `${row.oracle} view_mode=partial`;
+      return true;
+    }),
+  },
+  {
+    label: "append an unknown outcome value",
+    expect: "oracle markers exactly match expected results",
+    apply: mutateJson((d) => {
+      const row = d.acceptance_rows?.["FM-ROOT-REFUSE"];
+      if (!row?.oracle || row.oracle.includes("snapshot_state=stale")) return false;
+      row.oracle = `${row.oracle} snapshot_state=stale`;
+      return true;
+    }),
+  },
+  {
     label: "remove the directory positive row from copy",
     expect: "copy-entries",
     apply: mutateJson((d) => {
