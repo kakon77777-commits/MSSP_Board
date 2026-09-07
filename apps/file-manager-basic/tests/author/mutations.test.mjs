@@ -111,13 +111,17 @@ async function setup() {
     })),
     observationErrors: [],
   };
+  filesystem.subjects.set("R/hidden.txt", { kind: "file", byteLength: 1, isReparse: false });
+  filesystem.subjects.set("R/hidden-dir", { kind: "directory", byteLength: null, isReparse: false });
+  const hiddenFileId = identities.issue("R/hidden.txt", "file");
+  const hiddenDirectoryId = identities.issue("R/hidden-dir", "directory");
   const session = new FakeSession(snapshot);
   const recycle = new FakeRecycle(filesystem);
   const orchestrator = new BatchOperationOrchestrator({
     filesystem, recycle, identities, session, validateName: validateSingleSegmentName,
   });
   const item = (subject, ordinal = 0) => ({ ordinal, submittedEntryId: byPath[subject] });
-  return { orchestrator, filesystem, session, recycle, byPath, item };
+  return { orchestrator, filesystem, session, recycle, byPath, hiddenFileId, hiddenDirectoryId, item };
 }
 
 test("create validates name in main-owned logic and publishes only after success", async () => {
@@ -199,4 +203,22 @@ test("copy to a current destination directory uses its canonical id", async () =
   const result = await orchestrator.copy(1, [item("R/a.txt")], byPath["R/dest"]);
   assert.equal(result.overallStatus, "accepted");
   assert.deepEqual(filesystem.calls, [["copy", "R/a.txt", "R/dest/a.txt"]]);
+});
+
+test("current-generation cursors or hidden handles do not become mutation authority", async () => {
+  const { orchestrator, filesystem, recycle, hiddenFileId, hiddenDirectoryId, item } = await setup();
+  const hidden = { ordinal: 0, submittedEntryId: hiddenFileId };
+  const trash = await orchestrator.trash(1, [hidden]);
+  assert.equal(trash.overallStatus, "refused");
+  assert.equal(trash.outcomes[0].code, "invalid_entry_id");
+  assert.equal(recycle.calls.length, 0);
+
+  const destination = await orchestrator.copy(1, [item("R/a.txt")], hiddenDirectoryId);
+  assert.equal(destination.overallStatus, "refused");
+  assert.equal(filesystem.calls.length, 0);
+
+  const create = await orchestrator.createDirectory(1, hiddenDirectoryId, "unauthorized-child");
+  assert.equal(create.status, "refused");
+  assert.equal(create.code, "invalid_entry_id");
+  assert.equal(filesystem.subjects.has("R/hidden-dir/unauthorized-child"), false);
 });

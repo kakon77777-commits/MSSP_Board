@@ -62,6 +62,9 @@ export class BatchOperationOrchestrator {
 
     let parentPath = context.directoryPath;
     if (parentEntryId !== null) {
+      if (parentEntryId !== context.snapshot.directoryId) {
+        return this.#createRefusal(requestedName, "invalid_entry_id", context);
+      }
       const parent = this.#identities.resolve(parentEntryId, generation);
       if (!parent || parent.kind !== "directory") {
         return this.#createRefusal(requestedName, "invalid_entry_id", context);
@@ -169,6 +172,10 @@ export class BatchOperationOrchestrator {
     }
     let destinationPath = context.directoryPath;
     if (destinationDirectoryId !== null) {
+      if (!context.snapshot.entries.some((entry) =>
+        entry.entryId === destinationDirectoryId && entry.kind === "directory")) {
+        return this.#refuseAll(operation, items, context, items.map(() => "invalid_entry_id"));
+      }
       const destination = this.#identities.resolve(destinationDirectoryId, generation);
       if (!destination || destination.kind !== "directory") {
         return this.#refuseAll(operation, items, context, items.map(() => "invalid_entry_id"));
@@ -239,6 +246,9 @@ export class BatchOperationOrchestrator {
       }
       if ((counts.get(item.submittedEntryId) ?? 0) > 1) {
         resolutions.push(null); refusalCodes.push("duplicate_entry_id"); continue;
+      }
+      if (!context.snapshot.entries.some((entry) => entry.entryId === item.submittedEntryId)) {
+        resolutions.push(null); refusalCodes.push("invalid_entry_id"); continue;
       }
       const classification = this.#identities.classify(item.submittedEntryId, generation);
       if (classification !== "current") {
