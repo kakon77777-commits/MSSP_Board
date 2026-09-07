@@ -66,8 +66,8 @@ if (matrix) {
     if (matrix.sources.postscan_effective_path !== null || matrix.sources.postscan_effective_sha256 !== null
         || postscan?.status !== "candidate_measured_pending_correction") fail("postscan pending gate");
   } else if (matrix.sources.postscan_correction_status === "effective_three_of_three") {
-    if (typeof matrix.sources.postscan_effective_path !== "string"
-        || !/^[0-9A-F]{64}$/.test(matrix.sources.postscan_effective_sha256 ?? "")
+    if (matrix.sources.postscan_effective_path !== "workbench/2026-09-08-app2-postscan-correction-effective/EFFECTIVE.json"
+        || matrix.sources.postscan_effective_sha256 !== "1F8022DC299B660FFC0DDA565D1951AAD6E804B2916C318E3924842D55372E2F"
         || postscan?.status !== "candidate_measured") fail("postscan effective gate");
   } else fail("postscan correction status");
   if (!exactKeys(matrix.additional_gates, ["independent_tree_byte_oracle", "dynamic_subject_controls", "destination_io_boundary_split", "executable_comparator"])) fail("exact additional gates");

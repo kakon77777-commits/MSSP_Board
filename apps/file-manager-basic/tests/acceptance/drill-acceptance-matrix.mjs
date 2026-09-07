@@ -19,8 +19,15 @@ const attacks = [
   mutation("add an unknown acceptance ID", (value) => { value.entries["FM-UNKNOWN"] = value.entries["FM-ROOT-SELECT"]; }),
   mutation("map a row to an unrelated green test", (value) => { value.entries["FM-ROOT-SELECT"].test_files = ["apps/file-manager-basic/tests/acceptance/tree-byte-oracle.test.mjs"]; }),
   mutation("empty one row evidence set", (value) => { value.entries["FM-ROOT-SELECT"].test_files = []; }),
-  mutation("self-promote postscan without effective evidence", (value) => { value.entries["FM-SYS-SNAPSHOT-UNAVAILABLE"].status = "candidate_measured"; }),
-  mutation("claim effective correction without a subject", (value) => { value.sources.postscan_correction_status = "effective_three_of_three"; }),
+  mutation("retain measured postscan after removing effective state", (value) => {
+    value.sources.postscan_correction_status = "candidate_two_of_three";
+    value.sources.postscan_effective_path = null;
+    value.sources.postscan_effective_sha256 = null;
+  }),
+  mutation("replace effective correction with an arbitrary subject", (value) => {
+    value.sources.postscan_effective_path = "workbench/arbitrary/EFFECTIVE.json";
+    value.sources.postscan_effective_sha256 = "0".repeat(64);
+  }),
   mutation("relabel native picker NotMeasured as measured", (value) => { value.native_artifacts.directory_picker.status = "measured"; }),
   mutation("drop destination I/O split gate", (value) => { delete value.additional_gates.destination_io_boundary_split; }),
   mutation("change preregistration digest", (value) => { value.sources.preregistration_sha256 = "0".repeat(64); }),
