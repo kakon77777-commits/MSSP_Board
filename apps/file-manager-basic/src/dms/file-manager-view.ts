@@ -154,9 +154,14 @@ export function renderCreateDirectory(result: CreateDirectoryResult): void {
 }
 
 export function renderMutation(result: MutationResult): void {
-  const code = result.outcomes.find((outcome) => outcome.status !== "accepted");
+  const outcomeWithCode = result.outcomes.find((outcome) => outcome.status !== "accepted");
+  const code = outcomeWithCode && "code" in outcomeWithCode
+    ? outcomeWithCode.code
+    : result.snapshot.state === "unavailable"
+      ? result.snapshot.code
+      : "";
   renderEnvelope(result.overallStatus, result.snapshot, result.evidencePath,
-    code && "code" in code ? code.code : "");
+    code);
 }
 
 export function renderUnhandledError(error: unknown): void {
