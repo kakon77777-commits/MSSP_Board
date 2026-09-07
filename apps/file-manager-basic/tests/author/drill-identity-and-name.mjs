@@ -43,7 +43,7 @@ const attacks = [
   {
     label: "accept duplicate opaque token collisions",
     file: registry,
-    from: 'if (this.#byId.has(entryId))',
+    from: 'if (this.#byId.has(entryId) || this.#historicalIds.has(entryId))',
     to: 'if (false)',
   },
 ];
