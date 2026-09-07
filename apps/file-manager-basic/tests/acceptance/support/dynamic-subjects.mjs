@@ -11,6 +11,8 @@ import {
   rmdirSync,
   rmSync,
   symlinkSync,
+  unlinkSync,
+  writeFileSync,
 } from "node:fs";
 import path from "node:path";
 
@@ -285,4 +287,68 @@ export async function withUnreadableEntry(target, readableSibling, run) {
   if (restoreError !== null) throw restoreError;
   if (callbackError !== null) throw callbackError;
   return { value, cleanupState: "acl-restored" };
+}
+
+export async function withRefreshChange(root, manifest, run) {
+  const resolvedRoot = path.resolve(root);
+  const normalized = resolvedRoot.replaceAll("\\", "/");
+  if (!normalized.startsWith("D:/Ai/work together/.mssp-app2-refresh-")
+      || typeof run !== "function" || !Array.isArray(manifest?.entries)) {
+    throw new TypeError("refresh-change root, manifest or callback is invalid");
+  }
+  const baseRow = manifest.entries.find((entry) => entry.path === "refresh/base.txt");
+  if (baseRow?.kind !== "file") throw new TypeError("refresh base fixture is missing");
+  const basePath = path.join(resolvedRoot, "refresh", "base.txt");
+  const addedPath = path.join(resolvedRoot, "refresh", "external-added.bin");
+  const baseBytes = readFileSync(basePath);
+  const baseSha256 = crypto.createHash("sha256").update(baseBytes).digest("hex");
+  if (baseBytes.length !== baseRow.bytes || baseSha256 !== baseRow.sha256
+      || existsSync(addedPath)) {
+    throw new Error("refresh-change precondition was not proven");
+  }
+  const addedBytes = Buffer.from("a1b2c3d4", "hex");
+  const addedSha256 = crypto.createHash("sha256").update(addedBytes).digest("hex");
+  if (addedSha256 !== "97ed8e55519b020c4d9aceb40e0d3bc7eaa22d080d49592bf21206cb697c8a58") {
+    throw new Error("refresh-change expected payload is wrong");
+  }
+
+  let value;
+  let callbackError = null;
+  let cleanupError = null;
+  try {
+    unlinkSync(basePath);
+    writeFileSync(addedPath, addedBytes, { flag: "wx" });
+    value = await run({
+      root: resolvedRoot,
+      basePath,
+      addedPath,
+      proof: {
+        preconditionState: "proven",
+        baseSha256,
+        addedWasAbsent: true,
+      },
+    });
+  } catch (error) {
+    callbackError = error;
+  } finally {
+    try {
+      if (existsSync(addedPath)) {
+        const actualAdded = readFileSync(addedPath);
+        const actualHash = crypto.createHash("sha256").update(actualAdded).digest("hex");
+        if (actualAdded.length !== addedBytes.length || actualHash !== addedSha256) {
+          throw new Error("refresh-change cleanup refuses to delete changed added artifact");
+        }
+        unlinkSync(addedPath);
+      }
+      if (existsSync(basePath)) {
+        throw new Error("refresh-change cleanup refuses to overwrite an unexpected base artifact");
+      }
+      writeFileSync(basePath, baseBytes, { flag: "wx" });
+    } catch (error) {
+      cleanupError = error;
+    }
+  }
+  if (cleanupError !== null) throw cleanupError;
+  if (callbackError !== null) throw callbackError;
+  return { value, cleanupState: "restored" };
 }
