@@ -1,0 +1,208 @@
+{
+  "schema": "mssp.product-record/v0-experimental",
+  "position": "02",
+  "id": 2,
+  "slug": "file-manager-basic",
+  "title_zh": "基本檔案管理器",
+  "title_en": "Basic file manager",
+  "summary_zh": "一個以使用者選定根目錄為權限邊界的 Windows 檔案管理器；瀏覽、建立目錄、重新命名、複製、移動與資源回收筒操作都以快照身分、具名結果與外部樹／位元組證據驗證。",
+  "summary_en": "A Windows file manager whose authority stops at a user-selected root; browse, create-directory, rename, copy, move and recycle-bin operations are verified through snapshot identity, typed outcomes and an external tree/byte oracle.",
+
+  "denominator_ref": "slices/02-file-manager-basic/preregistration.json",
+  "app_path": "apps/file-manager-basic",
+
+  "owners": [
+    { "role": "product_build", "speaker": "Metron" },
+    { "role": "fixture_oracle_and_system_acceptance", "speaker": "Pragma" },
+    { "role": "independent_attack_and_close_review", "speaker": "Elenchos" }
+  ],
+
+  "note": "Technical close is bound to exact main commit 40b781c/f2317ebb. Native directory picker selection remains NotMeasured because the host lacked Trusted RPC; stubbed picker evidence is still labelled stubbed and does not count as an open acceptance ID. A first full-glob dynamic-lock ready timeout occurred before the product callback, left zero helper residue, and was followed by standalone 2/2 and default-matrix 2/2; it is retained as an environment/harness observation, not a product result. No release, deployment, publication or App 3 work follows from this record.",
+
+  "work_items": [
+    {
+      "key": "preregistration-core-catalog",
+      "title": "approved preregistration, three-seat MSSP core and acceptance catalog",
+      "state": "passed",
+      "evidence_refs": [
+        { "kind": "path", "ref": "slices/02-file-manager-basic/preregistration.json",
+          "at_commit": "40b781c6f903cd941c49af57614c9a02b525907f" },
+        { "kind": "external_digest",
+          "ref": "MSSP_Architect_Exchange/workbench/2026-09-07-app2-core-candidate-v4/MSSP_CORE.md",
+          "bytes": 26211,
+          "sha256": "dbfcbbe05ee7685ad917272e67237853931103ddddfa779ad035d9b2d101a439" },
+        { "kind": "external_digest",
+          "ref": "MSSP_Architect_Exchange/workbench/2026-09-07-app2-core-candidate/ACCEPTANCE_CATALOG.json",
+          "bytes": 21318,
+          "sha256": "2110dbc609f4d6c030de6650e02ae2bbfe8c6d87efeb0b5ae8ce5d09a0a9802d" }
+      ]
+    },
+    {
+      "key": "work-package-and-product",
+      "title": "effective work package and root-scoped packaged product",
+      "state": "passed",
+      "evidence_refs": [
+        { "kind": "external_digest",
+          "ref": "MSSP_Architect_Exchange/workbench/2026-09-07-app2-work-package-v2-effective/WORK_PACKAGE_EFFECTIVE.json",
+          "bytes": 6097,
+          "sha256": "b7be48ddc25260c1da45096d26ea08c693069fa625017e86b6023c57c5a82dc1" },
+        { "kind": "path", "ref": "apps/file-manager-basic/src/main/main.ts",
+          "at_commit": "40b781c6f903cd941c49af57614c9a02b525907f" }
+      ]
+    },
+    {
+      "key": "independent-system-acceptance",
+      "title": "47 acceptance tests and the complete 40-ID denominator",
+      "state": "passed",
+      "evidence_refs": [
+        { "kind": "path", "ref": "apps/file-manager-basic/tests/acceptance/acceptance-matrix.json",
+          "at_commit": "40b781c6f903cd941c49af57614c9a02b525907f" },
+        { "kind": "repository_snapshot",
+          "ref": "portfolio/evidence/raw/2026-09-08-file-manager-close-evidence.md",
+          "bytes": 4122,
+          "sha256": "8852204c1fc3f9d2f1eecb216ef647851891caef835c7863e92b62180d4c85aa" }
+      ]
+    },
+    {
+      "key": "conventional-comparator",
+      "title": "separate one-module operation-core comparator",
+      "state": "passed",
+      "evidence_refs": [
+        { "kind": "commit", "ref": "269eded7ed92cb9609ebdf0beeaef67955040c25" },
+        { "kind": "path", "ref": "comparators/file-manager-basic/operation-core.test.mjs",
+          "at_commit": "40b781c6f903cd941c49af57614c9a02b525907f" }
+      ]
+    }
+  ],
+
+  "stages": [
+    {
+      "stage": "preregistration",
+      "applicability": "required",
+      "state": "passed",
+      "rationale": null,
+      "evidence_refs": [
+        { "kind": "path", "ref": "slices/02-file-manager-basic/preregistration.json",
+          "at_commit": "40b781c6f903cd941c49af57614c9a02b525907f" }
+      ]
+    },
+    {
+      "stage": "mssp_core",
+      "applicability": "required",
+      "state": "passed",
+      "rationale": null,
+      "evidence_refs": [
+        { "kind": "external_digest",
+          "ref": "MSSP_Architect_Exchange/workbench/2026-09-07-app2-core-candidate-v4/MSSP_CORE.md",
+          "bytes": 26211,
+          "sha256": "dbfcbbe05ee7685ad917272e67237853931103ddddfa779ad035d9b2d101a439" }
+      ]
+    },
+    {
+      "stage": "work_package",
+      "applicability": "required",
+      "state": "passed",
+      "rationale": null,
+      "evidence_refs": [
+        { "kind": "external_digest",
+          "ref": "MSSP_Architect_Exchange/workbench/2026-09-07-app2-work-package-v2-effective/WORK_PACKAGE_EFFECTIVE.json",
+          "bytes": 6097,
+          "sha256": "b7be48ddc25260c1da45096d26ea08c693069fa625017e86b6023c57c5a82dc1" }
+      ]
+    },
+    {
+      "stage": "candidate",
+      "applicability": "required",
+      "state": "passed",
+      "rationale": null,
+      "evidence_refs": [
+        { "kind": "path", "ref": "apps/file-manager-basic/src/main/main.ts",
+          "at_commit": "40b781c6f903cd941c49af57614c9a02b525907f" }
+      ]
+    },
+    {
+      "stage": "island_verification",
+      "applicability": "required",
+      "state": "passed",
+      "rationale": null,
+      "evidence_refs": [
+        { "kind": "path", "ref": "apps/file-manager-basic/tests/author/contract.test.mjs",
+          "at_commit": "40b781c6f903cd941c49af57614c9a02b525907f" },
+        { "kind": "path", "ref": "apps/file-manager-basic/tests/author/drill-mutations.mjs",
+          "at_commit": "40b781c6f903cd941c49af57614c9a02b525907f" }
+      ]
+    },
+    {
+      "stage": "integration",
+      "applicability": "required",
+      "state": "passed",
+      "rationale": null,
+      "evidence_refs": [
+        { "kind": "commit", "ref": "40b781c6f903cd941c49af57614c9a02b525907f" }
+      ]
+    },
+    {
+      "stage": "system_acceptance",
+      "applicability": "required",
+      "state": "passed",
+      "rationale": null,
+      "evidence_refs": [
+        { "kind": "path", "ref": "apps/file-manager-basic/tests/acceptance/acceptance-matrix.json",
+          "at_commit": "40b781c6f903cd941c49af57614c9a02b525907f" },
+        { "kind": "repository_snapshot",
+          "ref": "portfolio/evidence/raw/2026-09-08-file-manager-close-evidence.md",
+          "bytes": 4122,
+          "sha256": "8852204c1fc3f9d2f1eecb216ef647851891caef835c7863e92b62180d4c85aa" }
+      ]
+    },
+    {
+      "stage": "technical_close",
+      "applicability": "required",
+      "state": "passed",
+      "rationale": null,
+      "evidence_refs": [
+        { "kind": "commit", "ref": "40b781c6f903cd941c49af57614c9a02b525907f" },
+        { "kind": "repository_snapshot",
+          "ref": "portfolio/evidence/2026-09-08-file-manager-technical-close.json",
+          "bytes": 561,
+          "sha256": "06ae1e1d389eb73763dffb548cb23c5a5ba9a4dfddc4ed8c0f2da74f4ac5717c" }
+      ]
+    }
+  ],
+
+  "blockers": [],
+
+  "close": {
+    "commit": "40b781c6f903cd941c49af57614c9a02b525907f",
+    "tree": "f2317ebb25ff93c4d830e3e5155bf2dc9811bb50",
+    "date": "2026-09-08"
+  },
+
+  "measured": {
+    "tests": 54,
+    "test_failures": 0,
+    "drills": 11,
+    "drill_mutations_surviving": 0,
+    "acceptance_ids": 40,
+    "acceptance_ids_open": 0,
+    "outsourced_units_in_tree": 0,
+    "outsourced_units_byte_identical": false
+  },
+
+  "measured_evidence": {
+    "kind": "repository_snapshot",
+    "ref": "portfolio/evidence/2026-09-08-file-manager-execution.json",
+    "bytes": 6959,
+    "sha256": "96eca55abd13d164326994db15defcf2f3058675f155b22796a6f4079ca7af64"
+  },
+
+  "demonstrates": [
+    "Snapshot generation names a published view, while accepted, partial, refused, failed and cancelled preserve distinct operation meanings.",
+    "Native directory picker selection is NotMeasured; stubbed picker evidence remains labelled stubbed and is not counted as an open denominator ID.",
+    "The first full-glob dynamic-lock ready timeout occurred before the product callback, left zero helper residue, and was followed by standalone 2/2 and default-matrix 2/2.",
+    "Native recycle means Electron shell.trashItem plus independent Recycle Bin metadata and payload recovery, not a claimed Shell-UI restore.",
+    "No release, deployment, publication or App 3 work is authorized by technical close."
+  ],
+
+  "intro_page": null
+}

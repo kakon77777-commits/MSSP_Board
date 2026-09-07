@@ -1,0 +1,15 @@
+{
+  "schema": "mssp.technical-close-decision/v0-experimental",
+  "product_position": "02",
+  "product_slug": "file-manager-basic",
+  "decision": "technical_close_accepted",
+  "commit": "40b781c6f903cd941c49af57614c9a02b525907f",
+  "tree": "f2317ebb25ff93c4d830e3e5155bf2dc9811bb50",
+  "decided_at": "2026-09-08",
+  "source": {
+    "kind": "external_digest",
+    "ref": "MSSP_Architect_Exchange/decisions/2026-09-08-neo-pragma-return-to-realist-close.md",
+    "bytes": 1170,
+    "sha256": "bdded30e1b6bef73ca83355e49b60a8af75dc2365ed11214312f2b35d9610aec"
+  }
+}

@@ -1,0 +1,209 @@
+{
+  "schema": "mssp.execution-snapshot/v0-experimental",
+  "product_position": "02",
+  "product_slug": "file-manager-basic",
+  "subject_commit": "40b781c6f903cd941c49af57614c9a02b525907f",
+  "subject_tree": "f2317ebb25ff93c4d830e3e5155bf2dc9811bb50",
+  "observed_at": "2026-09-08",
+  "commands": [
+    {
+      "id": "npm-test",
+      "kind": "test",
+      "cwd": "apps/file-manager-basic",
+      "command": "npm test",
+      "exit_code": 0,
+      "tests": 54,
+      "failures": 0,
+      "result_source": {
+        "kind": "repository_snapshot",
+        "ref": "portfolio/evidence/raw/2026-09-08-file-manager-close-evidence.md",
+        "bytes": 4122,
+        "sha256": "8852204c1fc3f9d2f1eecb216ef647851891caef835c7863e92b62180d4c85aa"
+      }
+    },
+    {
+      "id": "author-drill-directory-snapshot",
+      "kind": "drill",
+      "cwd": "apps/file-manager-basic",
+      "command": "node tests/author/drill-directory-snapshot.mjs",
+      "exit_code": 0,
+      "mutations": 6,
+      "surviving": 0,
+      "result_source": {
+        "kind": "repository_snapshot",
+        "ref": "portfolio/evidence/raw/2026-09-08-file-manager-close-evidence.md",
+        "bytes": 4122,
+        "sha256": "8852204c1fc3f9d2f1eecb216ef647851891caef835c7863e92b62180d4c85aa"
+      }
+    },
+    {
+      "id": "author-drill-dms-freshness",
+      "kind": "drill",
+      "cwd": "apps/file-manager-basic",
+      "command": "node tests/author/drill-dms-freshness.mjs",
+      "exit_code": 0,
+      "mutations": 2,
+      "surviving": 0,
+      "result_source": {
+        "kind": "repository_snapshot",
+        "ref": "portfolio/evidence/raw/2026-09-08-file-manager-close-evidence.md",
+        "bytes": 4122,
+        "sha256": "8852204c1fc3f9d2f1eecb216ef647851891caef835c7863e92b62180d4c85aa"
+      }
+    },
+    {
+      "id": "author-drill-dms-projection",
+      "kind": "drill",
+      "cwd": "apps/file-manager-basic",
+      "command": "node tests/author/drill-dms-projection.mjs",
+      "exit_code": 0,
+      "mutations": 1,
+      "surviving": 0,
+      "result_source": {
+        "kind": "repository_snapshot",
+        "ref": "portfolio/evidence/raw/2026-09-08-file-manager-close-evidence.md",
+        "bytes": 4122,
+        "sha256": "8852204c1fc3f9d2f1eecb216ef647851891caef835c7863e92b62180d4c85aa"
+      }
+    },
+    {
+      "id": "author-drill-identity-and-name",
+      "kind": "drill",
+      "cwd": "apps/file-manager-basic",
+      "command": "node tests/author/drill-identity-and-name.mjs",
+      "exit_code": 0,
+      "mutations": 6,
+      "surviving": 0,
+      "result_source": {
+        "kind": "repository_snapshot",
+        "ref": "portfolio/evidence/raw/2026-09-08-file-manager-close-evidence.md",
+        "bytes": 4122,
+        "sha256": "8852204c1fc3f9d2f1eecb216ef647851891caef835c7863e92b62180d4c85aa"
+      }
+    },
+    {
+      "id": "author-drill-mutations",
+      "kind": "drill",
+      "cwd": "apps/file-manager-basic",
+      "command": "node tests/author/drill-mutations.mjs",
+      "exit_code": 0,
+      "mutations": 10,
+      "surviving": 0,
+      "result_source": {
+        "kind": "repository_snapshot",
+        "ref": "portfolio/evidence/raw/2026-09-08-file-manager-close-evidence.md",
+        "bytes": 4122,
+        "sha256": "8852204c1fc3f9d2f1eecb216ef647851891caef835c7863e92b62180d4c85aa"
+      }
+    },
+    {
+      "id": "author-drill-preload-surface",
+      "kind": "drill",
+      "cwd": "apps/file-manager-basic",
+      "command": "node tests/author/drill-preload-surface.mjs",
+      "exit_code": 0,
+      "mutations": 5,
+      "surviving": 0,
+      "result_source": {
+        "kind": "repository_snapshot",
+        "ref": "portfolio/evidence/raw/2026-09-08-file-manager-close-evidence.md",
+        "bytes": 4122,
+        "sha256": "8852204c1fc3f9d2f1eecb216ef647851891caef835c7863e92b62180d4c85aa"
+      }
+    },
+    {
+      "id": "author-drill-readable-probe",
+      "kind": "drill",
+      "cwd": "apps/file-manager-basic",
+      "command": "node tests/author/drill-readable-probe.mjs",
+      "exit_code": 0,
+      "mutations": 1,
+      "surviving": 0,
+      "result_source": {
+        "kind": "repository_snapshot",
+        "ref": "portfolio/evidence/raw/2026-09-08-file-manager-close-evidence.md",
+        "bytes": 4122,
+        "sha256": "8852204c1fc3f9d2f1eecb216ef647851891caef835c7863e92b62180d4c85aa"
+      }
+    },
+    {
+      "id": "author-drill-root-picker-sequence",
+      "kind": "drill",
+      "cwd": "apps/file-manager-basic",
+      "command": "node tests/author/drill-root-picker-sequence.mjs",
+      "exit_code": 0,
+      "mutations": 4,
+      "surviving": 0,
+      "result_source": {
+        "kind": "repository_snapshot",
+        "ref": "portfolio/evidence/raw/2026-09-08-file-manager-close-evidence.md",
+        "bytes": 4122,
+        "sha256": "8852204c1fc3f9d2f1eecb216ef647851891caef835c7863e92b62180d4c85aa"
+      }
+    },
+    {
+      "id": "author-drill-root-session",
+      "kind": "drill",
+      "cwd": "apps/file-manager-basic",
+      "command": "node tests/author/drill-root-session.mjs",
+      "exit_code": 0,
+      "mutations": 9,
+      "surviving": 0,
+      "result_source": {
+        "kind": "repository_snapshot",
+        "ref": "portfolio/evidence/raw/2026-09-08-file-manager-close-evidence.md",
+        "bytes": 4122,
+        "sha256": "8852204c1fc3f9d2f1eecb216ef647851891caef835c7863e92b62180d4c85aa"
+      }
+    },
+    {
+      "id": "author-drill-security",
+      "kind": "drill",
+      "cwd": "apps/file-manager-basic",
+      "command": "node tests/author/drill-security.mjs",
+      "exit_code": 0,
+      "mutations": 5,
+      "surviving": 0,
+      "result_source": {
+        "kind": "repository_snapshot",
+        "ref": "portfolio/evidence/raw/2026-09-08-file-manager-close-evidence.md",
+        "bytes": 4122,
+        "sha256": "8852204c1fc3f9d2f1eecb216ef647851891caef835c7863e92b62180d4c85aa"
+      }
+    },
+    {
+      "id": "acceptance-drill-matrix",
+      "kind": "drill",
+      "cwd": "apps/file-manager-basic",
+      "command": "node tests/acceptance/drill-acceptance-matrix.mjs",
+      "exit_code": 0,
+      "mutations": 10,
+      "surviving": 0,
+      "result_source": {
+        "kind": "repository_snapshot",
+        "ref": "portfolio/evidence/raw/2026-09-08-file-manager-close-evidence.md",
+        "bytes": 4122,
+        "sha256": "8852204c1fc3f9d2f1eecb216ef647851891caef835c7863e92b62180d4c85aa"
+      }
+    }
+  ],
+  "acceptance": {
+    "ids": 40,
+    "open": 0,
+    "source": {
+      "kind": "repository_snapshot",
+      "ref": "portfolio/evidence/raw/2026-09-08-file-manager-close-evidence.md",
+      "bytes": 4122,
+      "sha256": "8852204c1fc3f9d2f1eecb216ef647851891caef835c7863e92b62180d4c85aa"
+    }
+  },
+  "outsourced_units": [],
+  "sources": [
+    {
+      "kind": "repository_snapshot",
+      "ref": "portfolio/evidence/raw/2026-09-08-file-manager-close-evidence.md",
+      "bytes": 4122,
+      "sha256": "8852204c1fc3f9d2f1eecb216ef647851891caef835c7863e92b62180d4c85aa"
+    }
+  ]
+}

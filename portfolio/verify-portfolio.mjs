@@ -42,43 +42,154 @@ const repo = path.join(here, "..");
 // not merely present as an object. A dangling or fetched-but-unmerged commit
 // exists and proves nothing about what was actually shipped.
 const CANONICAL_REF = "main";
-const EXPECTED_EXECUTION_COMMANDS = Object.freeze({
-  "npm-test": {
-    kind: "test", cwd: "apps/text-editor-basic", command: "npm test",
-    resultRef: "portfolio/evidence/raw/2026-08-30-pragma-a2-system-acceptance.md",
-    outputMarkers: ["npm test", "69 / 69 pass"],
-    counts: { tests: 69, failures: 0 },
+const APP1_RESULT = "portfolio/evidence/raw/2026-08-30-pragma-a2-system-acceptance.md";
+const APP2_RESULT = "portfolio/evidence/raw/2026-09-08-file-manager-close-evidence.md";
+
+// Execution evidence is product-specific. Reusing App-1 commands or captured
+// output for App 2 would produce a well-formed but false portfolio projection.
+const EXECUTION_PROFILES = Object.freeze({
+  "text-editor-basic": {
+    packageTestScript: "node --test tests/*.test.mjs",
+    acceptanceResultRef: APP1_RESULT,
+    acceptanceMarkers: [],
+    sources: [
+      "portfolio/evidence/raw/2026-08-30-slice-01-closed.md",
+      "portfolio/evidence/raw/2026-08-30-metron-dms-freshness-review.md",
+    ],
+    commands: {
+      "npm-test": {
+        kind: "test", cwd: "apps/text-editor-basic", command: "npm test",
+        resultRef: APP1_RESULT,
+        outputMarkers: ["npm test", "69 / 69 pass"],
+        counts: { tests: 69, failures: 0 },
+      },
+      "drill-boundary-contract": {
+        kind: "drill", cwd: "apps/text-editor-basic",
+        command: "node tests/drill-boundary-contract.mjs",
+        resultRef: APP1_RESULT,
+        outputMarkers: ["drill-boundary-contract", "7 mutations / 0 green / 0 did not apply"],
+        counts: { mutations: 7, surviving: 0 },
+      },
+      "drill-unit-manifest": {
+        kind: "drill", cwd: "apps/text-editor-basic",
+        command: "node tests/drill-unit-manifest.mjs",
+        resultRef: APP1_RESULT,
+        outputMarkers: ["drill-unit-manifest", "10 mutations / 0 green / 0 did not apply"],
+        counts: { mutations: 10, surviving: 0 },
+      },
+      "drill-dms-build-freshness": {
+        kind: "drill", cwd: "apps/text-editor-basic",
+        command: "node tests/drill-dms-build-freshness.mjs",
+        resultRef: "portfolio/evidence/raw/2026-08-30-metron-dms-freshness-review.md",
+        outputMarkers: ["mutated built DMS artifact", "red", "restored control", "green"],
+        counts: { mutations: 1, surviving: 0 },
+      },
+    },
+    candidateUnits: {
+      "apps/text-editor-basic/src/tms/encoding/utf8-document-codec.ts": {
+        unitId: "a2-p1-utf8-document-codec-v3",
+        artifactRef: "portfolio/evidence/candidates/a2-p1-utf8-document-codec-v3.json",
+      },
+      "apps/text-editor-basic/src/dms/encoding-visibility.ts": {
+        unitId: "a2-p3-encoding-visibility-v4",
+        artifactRef: "portfolio/evidence/candidates/a2-p3-encoding-visibility-v4.json",
+      },
+    },
   },
-  "drill-boundary-contract": {
-    kind: "drill", cwd: "apps/text-editor-basic",
-    command: "node tests/drill-boundary-contract.mjs",
-    resultRef: "portfolio/evidence/raw/2026-08-30-pragma-a2-system-acceptance.md",
-    outputMarkers: ["drill-boundary-contract", "7 mutations / 0 green / 0 did not apply"],
-    counts: { mutations: 7, surviving: 0 },
-  },
-  "drill-unit-manifest": {
-    kind: "drill", cwd: "apps/text-editor-basic",
-    command: "node tests/drill-unit-manifest.mjs",
-    resultRef: "portfolio/evidence/raw/2026-08-30-pragma-a2-system-acceptance.md",
-    outputMarkers: ["drill-unit-manifest", "10 mutations / 0 green / 0 did not apply"],
-    counts: { mutations: 10, surviving: 0 },
-  },
-  "drill-dms-build-freshness": {
-    kind: "drill", cwd: "apps/text-editor-basic",
-    command: "node tests/drill-dms-build-freshness.mjs",
-    resultRef: "portfolio/evidence/raw/2026-08-30-metron-dms-freshness-review.md",
-    outputMarkers: ["mutated built DMS artifact", "red", "restored control", "green"],
-    counts: { mutations: 1, surviving: 0 },
-  },
-});
-const EXPECTED_CANDIDATE_UNITS = Object.freeze({
-  "apps/text-editor-basic/src/tms/encoding/utf8-document-codec.ts": {
-    unitId: "a2-p1-utf8-document-codec-v3",
-    artifactRef: "portfolio/evidence/candidates/a2-p1-utf8-document-codec-v3.json",
-  },
-  "apps/text-editor-basic/src/dms/encoding-visibility.ts": {
-    unitId: "a2-p3-encoding-visibility-v4",
-    artifactRef: "portfolio/evidence/candidates/a2-p3-encoding-visibility-v4.json",
+  "file-manager-basic": {
+    packageTestScript: "node --test tests/author/*.test.mjs",
+    acceptanceResultRef: APP2_RESULT,
+    acceptanceMarkers: [
+      "full acceptance glob     47 / 47",
+      "default 40-ID matrix     40 / 40; open 0",
+    ],
+    sources: [APP2_RESULT],
+    commands: {
+      "npm-test": {
+        kind: "test", cwd: "apps/file-manager-basic", command: "npm test",
+        resultRef: APP2_RESULT,
+        outputMarkers: ["npm-test", "54 tests / 0 failures"],
+        counts: { tests: 54, failures: 0 },
+      },
+      "author-drill-directory-snapshot": {
+        kind: "drill", cwd: "apps/file-manager-basic",
+        command: "node tests/author/drill-directory-snapshot.mjs",
+        resultRef: APP2_RESULT,
+        outputMarkers: ["author-drill-directory-snapshot", "6 attacks / 0 green / 0 errors / 0 did not apply"],
+        counts: { mutations: 6, surviving: 0 },
+      },
+      "author-drill-dms-freshness": {
+        kind: "drill", cwd: "apps/file-manager-basic",
+        command: "node tests/author/drill-dms-freshness.mjs",
+        resultRef: APP2_RESULT,
+        outputMarkers: ["author-drill-dms-freshness", "2 attacks / 0 green / 0 errors / 0 did not apply"],
+        counts: { mutations: 2, surviving: 0 },
+      },
+      "author-drill-dms-projection": {
+        kind: "drill", cwd: "apps/file-manager-basic",
+        command: "node tests/author/drill-dms-projection.mjs",
+        resultRef: APP2_RESULT,
+        outputMarkers: ["author-drill-dms-projection", "1 attacks / 0 green / 0 errors / 0 did not apply"],
+        counts: { mutations: 1, surviving: 0 },
+      },
+      "author-drill-identity-and-name": {
+        kind: "drill", cwd: "apps/file-manager-basic",
+        command: "node tests/author/drill-identity-and-name.mjs",
+        resultRef: APP2_RESULT,
+        outputMarkers: ["author-drill-identity-and-name", "6 attacks / 0 green / 0 errors / 0 did not apply"],
+        counts: { mutations: 6, surviving: 0 },
+      },
+      "author-drill-mutations": {
+        kind: "drill", cwd: "apps/file-manager-basic",
+        command: "node tests/author/drill-mutations.mjs",
+        resultRef: APP2_RESULT,
+        outputMarkers: ["author-drill-mutations", "10 attacks / 0 green / 0 errors / 0 did not apply"],
+        counts: { mutations: 10, surviving: 0 },
+      },
+      "author-drill-preload-surface": {
+        kind: "drill", cwd: "apps/file-manager-basic",
+        command: "node tests/author/drill-preload-surface.mjs",
+        resultRef: APP2_RESULT,
+        outputMarkers: ["author-drill-preload-surface", "5 attacks / 0 green / 0 errors / 0 did not apply"],
+        counts: { mutations: 5, surviving: 0 },
+      },
+      "author-drill-readable-probe": {
+        kind: "drill", cwd: "apps/file-manager-basic",
+        command: "node tests/author/drill-readable-probe.mjs",
+        resultRef: APP2_RESULT,
+        outputMarkers: ["author-drill-readable-probe", "1 attacks / 0 green / 0 errors / 0 did not apply"],
+        counts: { mutations: 1, surviving: 0 },
+      },
+      "author-drill-root-picker-sequence": {
+        kind: "drill", cwd: "apps/file-manager-basic",
+        command: "node tests/author/drill-root-picker-sequence.mjs",
+        resultRef: APP2_RESULT,
+        outputMarkers: ["author-drill-root-picker-sequence", "4 attacks / 0 green / 0 errors / 0 did not apply"],
+        counts: { mutations: 4, surviving: 0 },
+      },
+      "author-drill-root-session": {
+        kind: "drill", cwd: "apps/file-manager-basic",
+        command: "node tests/author/drill-root-session.mjs",
+        resultRef: APP2_RESULT,
+        outputMarkers: ["author-drill-root-session", "9 attacks / 0 green / 0 errors / 0 did not apply"],
+        counts: { mutations: 9, surviving: 0 },
+      },
+      "author-drill-security": {
+        kind: "drill", cwd: "apps/file-manager-basic",
+        command: "node tests/author/drill-security.mjs",
+        resultRef: APP2_RESULT,
+        outputMarkers: ["author-drill-security", "5 attacks / 0 green / 0 errors / 0 did not apply"],
+        counts: { mutations: 5, surviving: 0 },
+      },
+      "acceptance-drill-matrix": {
+        kind: "drill", cwd: "apps/file-manager-basic",
+        command: "node tests/acceptance/drill-acceptance-matrix.mjs",
+        resultRef: APP2_RESULT,
+        outputMarkers: ["acceptance-drill-matrix", "10 attacks / 0 green / 0 errors / 0 did not apply"],
+        counts: { mutations: 10, surviving: 0 },
+      },
+    },
+    candidateUnits: {},
   },
 });
 
@@ -235,6 +346,11 @@ function checkTechnicalCloseDecision(where, record, closedStage) {
 }
 
 function checkExecutionSnapshot(where, record) {
+  const profile = EXECUTION_PROFILES[record.slug];
+  if (profile === undefined) {
+    fail(where, `no registered execution profile for ${record.slug}`);
+    return;
+  }
   checkEvidence(`${where} measured evidence`, [record.measured_evidence]);
   const ref = record.measured_evidence;
   if (ref?.kind !== "repository_snapshot") {
@@ -277,7 +393,7 @@ function checkExecutionSnapshot(where, record) {
       fail(where, `execution command ${command.id} has invalid command/cwd`);
     }
     if (command.exit_code !== 0) fail(where, `execution command ${command.id} did not exit 0`);
-    const expected = EXPECTED_EXECUTION_COMMANDS[command.id];
+    const expected = profile.commands[command.id];
     if (expected === undefined
         || command.kind !== expected.kind || command.cwd !== expected.cwd
         || command.command !== expected.command) {
@@ -311,7 +427,7 @@ function checkExecutionSnapshot(where, record) {
           const packageJson = JSON.parse(gitBuffer([
             "show", `${snapshot.subject_commit}:${command.cwd}/package.json`,
           ]).toString("utf8"));
-          if (packageJson.scripts?.test !== "node --test tests/*.test.mjs") {
+          if (packageJson.scripts?.test !== profile.packageTestScript) {
             fail(where, "execution npm-test does not match the subject package test script");
           }
         } catch (error) {
@@ -338,7 +454,7 @@ function checkExecutionSnapshot(where, record) {
       drills.push(command);
     }
   }
-  const expectedCommandIds = Object.keys(EXPECTED_EXECUTION_COMMANDS);
+  const expectedCommandIds = Object.keys(profile.commands);
   if (commandIds.size !== expectedCommandIds.length
       || !expectedCommandIds.every((id) => commandIds.has(id))) {
     fail(where, "execution snapshot command IDs do not match the registered set");
@@ -360,9 +476,16 @@ function checkExecutionSnapshot(where, record) {
     }
     checkEvidence(`${where} acceptance provenance`, [acceptance.source]);
     if (acceptance.source?.kind !== "repository_snapshot"
-        || acceptance.source.ref
-          !== "portfolio/evidence/raw/2026-08-30-pragma-a2-system-acceptance.md") {
+        || acceptance.source.ref !== profile.acceptanceResultRef) {
       fail(where, "execution acceptance does not name the registered independent result subject");
+    } else {
+      const resultPath = checkRepoRelative(where, acceptance.source.ref);
+      if (resultPath !== null && existsSync(path.join(repo, resultPath))) {
+        const captured = readFileSync(path.join(repo, resultPath), "utf8");
+        if (!profile.acceptanceMarkers.every((marker) => captured.includes(marker))) {
+          fail(where, "execution acceptance result lacks required product-specific markers");
+        }
+      }
     }
   }
 
@@ -378,7 +501,7 @@ function checkExecutionSnapshot(where, record) {
       fail(where, `outsourced unit ${unit.path} has invalid byte/hash fields`);
     }
     checkEvidence(`${where} outsourced candidate`, [unit.candidate_artifact]);
-    const expectedUnit = EXPECTED_CANDIDATE_UNITS[unit.path];
+    const expectedUnit = profile.candidateUnits[unit.path];
     if (expectedUnit === undefined
         || unit.candidate_artifact?.kind !== "repository_snapshot"
         || unit.candidate_artifact.ref !== expectedUnit.artifactRef) {
@@ -427,10 +550,7 @@ function checkExecutionSnapshot(where, record) {
   const sourceRefs = Array.isArray(snapshot.sources)
     ? snapshot.sources.map((source) => source?.kind === "repository_snapshot" ? source.ref : null)
     : [];
-  const expectedSources = [
-    "portfolio/evidence/raw/2026-08-30-slice-01-closed.md",
-    "portfolio/evidence/raw/2026-08-30-metron-dms-freshness-review.md",
-  ];
+  const expectedSources = profile.sources;
   if (sourceRefs.length !== expectedSources.length
       || !expectedSources.every((refValue) => sourceRefs.includes(refValue))) {
     fail(where, "execution provenance does not match the registered local evidence subjects");

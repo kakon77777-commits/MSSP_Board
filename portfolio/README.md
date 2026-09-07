@@ -12,12 +12,12 @@
 結案的 commit 必須從 `main` **可達**，而且記錄的 tree 必須等於那個 commit 的 tree。
 物件存在不算數：一個 fetch 下來但沒合併的 commit 也存在，而它什麼都沒證明。
 
-**1 技術結案 · 0 進行中 · 14 已命名未開始 · 5 待審定名**
+**2 技術結案 · 0 進行中 · 13 已命名未開始 · 5 待審定名**
 
 | # | 專案 | 生命週期 | 目前的關卡 | 介紹頁 |
 |---:|---|---|---|---|
 | 01 | **純文字編輯器** | 技術結案 | （無） | 未建立 |
-| 02 | `file-manager-basic` | 未開始 | — | — |
+| 02 | **基本檔案管理器** | 技術結案 | （無） | 未建立 |
 | 03 | `markdown-editor` | 未開始 | — | — |
 | 04 | `spreadsheet` | 未開始 | — | — |
 | 05 | `git-client` | 未開始 | — | — |
@@ -83,3 +83,50 @@ tree    c636d10854dd6aeade5ad3131f527421bc8036ae
 ```
 
 席位：product_build Elenchos · manifest_and_oracle Metron · system_acceptance Pragma
+
+## 02. 基本檔案管理器
+
+`file-manager-basic` · 技術結案 · 紀錄 `portfolio/products/02-file-manager-basic.json`
+
+一個以使用者選定根目錄為權限邊界的 Windows 檔案管理器；瀏覽、建立目錄、重新命名、複製、移動與資源回收筒操作都以快照身分、具名結果與外部樹／位元組證據驗證。
+
+| 階段 | 適用性 | 狀態 |
+|---|---|---|
+| `preregistration` | required | passed |
+| `mssp_core` | required | passed |
+| `work_package` | required | passed |
+| `candidate` | required | passed |
+| `island_verification` | required | passed |
+| `integration` | required | passed |
+| `system_acceptance` | required | passed |
+| `technical_close` | required | passed |
+
+**實際做過的工作項目**（變動長度，不是固定格）：
+
+- `preregistration-core-catalog` approved preregistration, three-seat MSSP core and acceptance catalog — passed
+- `work-package-and-product` effective work package and root-scoped packaged product — passed
+- `independent-system-acceptance` 47 acceptance tests and the complete 40-ID denominator — passed
+- `conventional-comparator` separate one-module operation-core comparator — passed
+
+**這個產品量出來的東西：**
+
+- Snapshot generation names a published view, while accepted, partial, refused, failed and cancelled preserve distinct operation meanings.
+- Native directory picker selection is NotMeasured; stubbed picker evidence remains labelled stubbed and is not counted as an open denominator ID.
+- The first full-glob dynamic-lock ready timeout occurred before the product callback, left zero helper residue, and was followed by standalone 2/2 and default-matrix 2/2.
+- Native recycle means Electron shell.trashItem plus independent Recycle Bin metadata and payload recovery, not a claimed Shell-UI restore.
+- No release, deployment, publication or App 3 work is authorized by technical close.
+
+```text
+測試              54 條，0 條失敗
+鑽孔              11 支，0 個變異活下來
+驗收 ID           40 條，0 條未結
+外包進樹的單元    0 個
+```
+
+```text
+commit  40b781c6f903cd941c49af57614c9a02b525907f
+tree    f2317ebb25ff93c4d830e3e5155bf2dc9811bb50
+結案    2026-09-08
+```
+
+席位：product_build Metron · fixture_oracle_and_system_acceptance Pragma · independent_attack_and_close_review Elenchos
