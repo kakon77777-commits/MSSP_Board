@@ -25,6 +25,10 @@ if (matrix) {
   if (!exactKeys(matrix, ["schema", "sources", "policy", "entries", "additional_gates", "native_artifacts"])) fail("exact matrix fields");
   if (matrix.schema !== "mssp.file-manager.acceptance-matrix/v1-candidate") fail("matrix schema");
   if (!exactKeys(matrix.sources, ["preregistration_path", "preregistration_bytes", "preregistration_sha256", "acceptance_catalog_sha256", "acceptance_resolver_sha256", "destination_effective_sha256", "postscan_correction_sha256", "postscan_correction_status", "postscan_effective_path", "postscan_effective_sha256"])) fail("exact source fields");
+  if (!exactKeys(matrix.policy, ["entry_count", "mapping_bytes", "mapping_sha256", "default_exit_requires_no_governance_pending", "whole_test_file_failure_is_conservatively_applied_to_every_linked_id", "did_not_apply_is_not_pass"])) fail("exact policy fields");
+  if (matrix.policy.default_exit_requires_no_governance_pending !== true
+      || matrix.policy.whole_test_file_failure_is_conservatively_applied_to_every_linked_id !== true
+      || matrix.policy.did_not_apply_is_not_pass !== true) fail("matrix fail-closed policy");
   if (matrix.sources.acceptance_catalog_sha256 !== "2110DBC609F4D6C030DE6650E02AE2BBFE8C6D87EFEB0B5AE8CE5D09A0A9802D"
       || matrix.sources.acceptance_resolver_sha256 !== "1E43555A524ABB5A3B958F165EE52753FC2B6D8F545DEFC9C3988A75562BD1EA"
       || matrix.sources.destination_effective_sha256 !== "023D64267F476ACBD61B8611468C8D6AB0CC6DA8EE529C5CED6B19669D065E2D"
@@ -40,6 +44,15 @@ if (matrix) {
   const actualIds = Object.keys(matrix.entries ?? {}).sort();
   if (expectedIds.length !== 40 || actualIds.length !== 40
       || expectedIds.join("|") !== actualIds.join("|") || matrix.policy.entry_count !== 40) fail("exact 40-ID denominator");
+
+  const mapping = Object.fromEntries(Object.entries(matrix.entries ?? {})
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([id, entry]) => [id, { evidence_label: entry.evidence_label, test_files: entry.test_files }]));
+  const mappingBytes = Buffer.from(`${JSON.stringify(mapping)}\n`, "utf8");
+  if (mappingBytes.length !== matrix.policy.mapping_bytes
+      || sha256(mappingBytes) !== matrix.policy.mapping_sha256
+      || matrix.policy.mapping_bytes !== 7151
+      || matrix.policy.mapping_sha256 !== "EC02F253761A63A36B6859DEF0EACD41D91DE0802627E741297D4832897EF13D") fail("exact ID-to-evidence mapping");
 
   for (const [id, entry] of Object.entries(matrix.entries ?? {})) {
     if (!exactKeys(entry, ["status", "evidence_label", "test_files"])) fail(`${id} exact fields`);
@@ -57,16 +70,20 @@ if (matrix) {
         || !/^[0-9A-F]{64}$/.test(matrix.sources.postscan_effective_sha256 ?? "")
         || postscan?.status !== "candidate_measured") fail("postscan effective gate");
   } else fail("postscan correction status");
+  if (!exactKeys(matrix.additional_gates, ["independent_tree_byte_oracle", "dynamic_subject_controls", "destination_io_boundary_split", "executable_comparator"])) fail("exact additional gates");
   for (const [gate, files] of Object.entries(matrix.additional_gates ?? {})) {
     if (!Array.isArray(files) || files.length === 0) fail(`${gate} files`);
     for (const relative of files ?? []) testFiles.add(relative);
   }
+  if (!exactKeys(matrix.native_artifacts, ["directory_picker", "recycle"])) fail("exact native artifact names");
   for (const [name, artifact] of Object.entries(matrix.native_artifacts ?? {})) {
     if (!exactKeys(artifact, ["status", "harness", "reason"])
         || !["measured", "NotMeasured"].includes(artifact.status)) fail(`${name} native artifact`);
     const full = path.resolve(repo, ...artifact.harness.split("/"));
     if (!existsSync(full)) fail(`${name} native artifact harness`);
   }
+  if (matrix.native_artifacts.directory_picker.status !== "NotMeasured"
+      || matrix.native_artifacts.recycle.status !== "measured") fail("native artifact status boundary");
 }
 
 function confinedFile(relative) {

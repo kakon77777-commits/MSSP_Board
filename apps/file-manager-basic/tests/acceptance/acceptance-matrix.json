@@ -14,6 +14,8 @@
   },
   "policy": {
     "entry_count": 40,
+    "mapping_bytes": 7151,
+    "mapping_sha256": "EC02F253761A63A36B6859DEF0EACD41D91DE0802627E741297D4832897EF13D",
     "default_exit_requires_no_governance_pending": true,
     "whole_test_file_failure_is_conservatively_applied_to_every_linked_id": true,
     "did_not_apply_is_not_pass": true
