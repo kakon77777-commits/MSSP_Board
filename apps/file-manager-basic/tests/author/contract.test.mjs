@@ -44,6 +44,7 @@ import type {
   DirectorySnapshot, EntryOutcome, MutationResult, RootSelectionResult,
   SelectionResult, CreateDirectoryResult, ViewCommandResult,
   DirectoryObservationResult, RefusalCode, ExecutionFailureCode,
+  DestinationCommandResult, DestinationProjection, SetDestinationRequest,
 } from "@contract";
 import type { FilesystemPort, IdentityPort, RecyclePort, RootPickerPort } from "@ports";
 
@@ -53,6 +54,7 @@ const snapshot: DirectorySnapshot = {
   directoryId: null, parentEntryId: null, completeness: "complete",
   entries: [{ entryId: "e", name: "a.txt", kind: "file", byteLength: 1 }],
   observationErrors: [],
+  destinationProjection: { state: "none" },
 };
 const accepted: EntryOutcome = { ordinal: 0, entryId: "e", status: "accepted" };
 const refused: EntryOutcome = { ordinal: 1, submittedEntryId: "bad", status: "refused", code: "stale_generation" };
@@ -65,20 +67,25 @@ const view: ViewCommandResult = { operation: "refresh", status: "accepted", snap
 const observation: DirectoryObservationResult = { status: "observed", snapshot: { state: "current", snapshot }, evidencePath: "native" };
 const refusal: RefusalCode = "reparse_refused";
 const failure: ExecutionFailureCode = "recycle_failed";
+const destination: DestinationProjection = { state: "current", entryId: "d", displayName: "dest", isRoot: false };
+const destinationCommand: DestinationCommandResult = { operation: "set-destination", status: "accepted", snapshot: { state: "current", snapshot }, evidencePath: "stubbed" };
+const destinationRequest: SetDestinationRequest = { mode: "visible-entry", entryId: "e" };
 declare const fsPort: FilesystemPort;
 declare const ids: IdentityPort;
 declare const recycle: RecyclePort;
 declare const picker: RootPickerPort;
-void [mutation, root, selection, create, view, observation, refusal, failure, fsPort, ids, recycle, picker];
+void [mutation, root, selection, create, view, observation, refusal, failure, destination, destinationCommand, destinationRequest, fsPort, ids, recycle, picker];
 `;
 
 const negative = String.raw`
-import type { EntryOutcome, RootSelectionResult, SelectionResult, RefusalCode } from "@contract";
+import type { EntryOutcome, RootSelectionResult, SelectionResult, RefusalCode, DestinationProjection, SetDestinationRequest } from "@contract";
 const acceptedWithRawInput: EntryOutcome = { ordinal: 0, entryId: "e", submittedEntryId: "e", status: "accepted" };
 const failedWithoutPrior: RootSelectionResult = { status: "failed", code: "root_picker_failed", evidencePath: "native" };
 const duplicateSelectionList: SelectionResult = { status: "accepted", outcomes: [], selectedEntryIds: [], currentSnapshot: {} as never, evidencePath: "stubbed" };
 const freeString: RefusalCode = "whatever";
-void [acceptedWithRawInput, failedWithoutPrior, duplicateSelectionList, freeString];
+const destinationMissingRootFlag: DestinationProjection = { state: "current", entryId: "d", displayName: "dest" };
+const overloadedNullPin: SetDestinationRequest = null;
+void [acceptedWithRawInput, failedWithoutPrior, duplicateSelectionList, freeString, destinationMissingRootFlag, overloadedNullPin];
 `;
 
 test("core-v4 SMS DTOs and ports accept the exact intended shapes", () => {

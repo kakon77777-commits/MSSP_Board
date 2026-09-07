@@ -9,6 +9,7 @@ import type {
   DirectoryObservationResult,
   MutationRequestItem,
   SelectionRequestItem,
+  SetDestinationRequest,
 } from "../sms/file-manager-contract";
 import type { SnapshotBuildInput, SnapshotPort } from "../sms/file-manager-ports";
 import { BatchOperationOrchestrator } from "../tms/batch-operation-orchestrator";
@@ -67,6 +68,19 @@ function parseItems(value: unknown): MutationRequestItem[] | null {
   return items;
 }
 
+function parseDestinationRequest(value: unknown): SetDestinationRequest | null {
+  if (!isRecord(value) || typeof value.mode !== "string") return null;
+  if (value.mode === "visible-entry") {
+    return exactKeys(value, ["mode", "entryId"]) && typeof value.entryId === "string"
+      ? { mode: "visible-entry", entryId: value.entryId }
+      : null;
+  }
+  if (value.mode === "selected-root" || value.mode === "clear") {
+    return exactKeys(value, ["mode"]) ? { mode: value.mode } : null;
+  }
+  return null;
+}
+
 function createServices() {
   const filesystem = new WindowsFilesystemAdapter();
   const identities = new EntryIdRegistry(randomUUID);
@@ -113,6 +127,13 @@ function registerHandlers(): void {
     const items = parseItems(value.items) as SelectionRequestItem[] | null;
     if (!items) throw new TypeError("invalid selection items");
     return session.setSelection(value.generation, items);
+  });
+  ipcMain.handle("file-manager:set-destination", (_event, value: unknown) => {
+    if (!isRecord(value) || !exactKeys(value, ["generation", "request"])
+        || !isGeneration(value.generation)) throw new TypeError("invalid destination request");
+    const request = parseDestinationRequest(value.request);
+    if (!request) return session.refuseDestinationCommand("invalid_argument");
+    return session.setDestination(value.generation, request);
   });
   ipcMain.handle("file-manager:create-directory", (_event, value: unknown) => {
     if (!isRecord(value) || !exactKeys(value, ["generation", "parentEntryId", "name"])

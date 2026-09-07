@@ -33,7 +33,7 @@ test("entry ids are opaque and valid for exactly one generation", async () => {
   const { EntryIdRegistry } = await load("entry-id-registry.js");
   const ids = new EntryIdRegistry(() => "token-one");
   ids.beginGeneration(1);
-  const id = ids.issue("D:\\scratch\\root\\a.txt", "file");
+  const id = ids.issue("D:\\scratch\\root\\a.txt", "file", "visible-entry");
   assert.equal(id, "entry:token-one");
   assert.equal(id.includes("scratch"), false);
   assert.deepEqual(ids.resolve(id, 1), {
@@ -41,6 +41,7 @@ test("entry ids are opaque and valid for exactly one generation", async () => {
     canonicalPath: "D:\\scratch\\root\\a.txt",
     generation: 1,
     kind: "file",
+    role: "visible-entry",
   });
   assert.equal(ids.resolve(id, 2), null);
   assert.equal(ids.resolve("entry:unknown", 1), null);
@@ -48,13 +49,15 @@ test("entry ids are opaque and valid for exactly one generation", async () => {
 
 test("same path is stable within one snapshot and changes across publications", async () => {
   const { EntryIdRegistry } = await load("entry-id-registry.js");
-  const tokens = ["first", "second"];
+  const tokens = ["first", "destination", "second"];
   const ids = new EntryIdRegistry(() => tokens.shift());
   ids.beginGeneration(7);
-  const first = ids.issue("D:\\scratch\\root\\same.txt", "file");
-  assert.equal(ids.issue("D:\\scratch\\root\\same.txt", "file"), first);
+  const first = ids.issue("D:\\scratch\\root\\same.txt", "file", "visible-entry");
+  assert.equal(ids.issue("D:\\scratch\\root\\same.txt", "file", "visible-entry"), first);
+  const destination = ids.issue("D:\\scratch\\root\\same.txt", "file", "pinned-destination");
+  assert.notEqual(destination, first, "same path with a different authority role needs a distinct ID");
   ids.beginGeneration(8);
-  const second = ids.issue("D:\\scratch\\root\\same.txt", "file");
+  const second = ids.issue("D:\\scratch\\root\\same.txt", "file", "visible-entry");
   assert.notEqual(second, first);
   assert.equal(ids.resolve(first, 7), null, "old generation mappings must be discarded");
   assert.equal(ids.currentGeneration(), 8);
@@ -63,8 +66,8 @@ test("same path is stable within one snapshot and changes across publications", 
 test("registry rejects issue before a generation and duplicate token collisions", async () => {
   const { EntryIdRegistry } = await load("entry-id-registry.js");
   const ids = new EntryIdRegistry(() => "collision");
-  assert.throws(() => ids.issue("D:\\a", "file"), /generation/i);
+  assert.throws(() => ids.issue("D:\\a", "file", "visible-entry"), /generation/i);
   ids.beginGeneration(1);
-  ids.issue("D:\\a", "file");
-  assert.throws(() => ids.issue("D:\\b", "directory"), /collision/i);
+  ids.issue("D:\\a", "file", "visible-entry");
+  assert.throws(() => ids.issue("D:\\b", "directory", "visible-entry"), /collision/i);
 });

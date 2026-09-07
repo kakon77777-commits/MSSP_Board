@@ -2,9 +2,11 @@ import type {
   CreateDirectoryResult,
   DirectoryObservationResult,
   DirectorySnapshot,
+  DestinationCommandResult,
   MutationRequestItem,
   MutationResult,
   RootSelectionResult,
+  SetDestinationRequest,
   SelectionRequestItem,
   SelectionResult,
   ViewCommandResult,
@@ -12,6 +14,7 @@ import type {
 import {
   renderCreateDirectory,
   renderDirectoryObservation,
+  renderDestinationCommand,
   renderMutation,
   renderRootSelection,
   renderSelection,
@@ -25,6 +28,7 @@ interface FileManagerApi {
   navigate(generation: number, entryId: string | null): Promise<ViewCommandResult>;
   refresh(): Promise<ViewCommandResult>;
   setSelection(generation: number, items: SelectionRequestItem[]): Promise<SelectionResult>;
+  setDestination(generation: number, request: SetDestinationRequest): Promise<DestinationCommandResult>;
   createDirectory(generation: number, parentEntryId: string | null, name: unknown): Promise<CreateDirectoryResult>;
   renameEntries(generation: number, items: MutationRequestItem[], name: unknown): Promise<MutationResult>;
   copyEntries(generation: number, items: MutationRequestItem[], destinationDirectoryId: string | null): Promise<MutationResult>;
@@ -42,7 +46,7 @@ function capture(result: unknown): void {
   host.__lastFileManagerResult = result;
 }
 
-function updateSnapshot(result: RootSelectionResult | DirectoryObservationResult | ViewCommandResult | CreateDirectoryResult | MutationResult): void {
+function updateSnapshot(result: RootSelectionResult | DirectoryObservationResult | ViewCommandResult | DestinationCommandResult | CreateDirectoryResult | MutationResult): void {
   if ("status" in result && result.status === "accepted" && "snapshot" in result) {
     const value = result.snapshot;
     if ("schema" in value) snapshot = value;
@@ -84,6 +88,15 @@ document.querySelector("#refresh")?.addEventListener("click", () => {
 document.querySelector("#create-directory")?.addEventListener("click", () => {
   const name = (document.querySelector<HTMLInputElement>("#name-input"))?.value ?? "";
   void perform(() => host.fileManager.createDirectory(currentGeneration(), snapshot?.directoryId ?? null, name), renderCreateDirectory);
+});
+document.querySelector("#set-destination")?.addEventListener("click", () => {
+  const raw = (document.querySelector<HTMLSelectElement>("#pin-target"))?.value ?? "clear";
+  const request: SetDestinationRequest = raw === "selected-root"
+    ? { mode: "selected-root" }
+    : raw === "clear"
+      ? { mode: "clear" }
+      : { mode: "visible-entry", entryId: raw.slice("visible:".length) };
+  void perform(() => host.fileManager.setDestination(currentGeneration(), request), renderDestinationCommand);
 });
 document.querySelector("#rename-entry")?.addEventListener("click", () => {
   const name = (document.querySelector<HTMLInputElement>("#name-input"))?.value ?? "";

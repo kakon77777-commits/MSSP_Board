@@ -1,5 +1,9 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { MutationRequestItem, SelectionRequestItem } from "../sms/file-manager-contract";
+import type {
+  MutationRequestItem,
+  SelectionRequestItem,
+  SetDestinationRequest,
+} from "../sms/file-manager-contract";
 
 const api = Object.freeze({
   chooseRoot: () => ipcRenderer.invoke("file-manager:choose-root"),
@@ -9,6 +13,8 @@ const api = Object.freeze({
   refresh: () => ipcRenderer.invoke("file-manager:refresh"),
   setSelection: (generation: number, items: SelectionRequestItem[]) =>
     ipcRenderer.invoke("file-manager:set-selection", { generation, items }),
+  setDestination: (generation: number, request: SetDestinationRequest) =>
+    ipcRenderer.invoke("file-manager:set-destination", { generation, request }),
   createDirectory: (generation: number, parentEntryId: string | null, name: unknown) =>
     ipcRenderer.invoke("file-manager:create-directory", { generation, parentEntryId, name }),
   renameEntries: (generation: number, items: MutationRequestItem[], name: unknown) =>

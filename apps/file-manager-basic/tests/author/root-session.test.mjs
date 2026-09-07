@@ -195,3 +195,71 @@ test("picker operational failure is distinct and no-root view is typed", async (
   assert.equal(view.code, "root_removed");
   assert.equal(view.snapshot.state, "unavailable");
 });
+
+test("pinned destination is reissued with each publication and never becomes a source", async () => {
+  const { controller } = await setup([{ state: "selected", path: "R", evidencePath: "stubbed" }]);
+  const selected = await controller.chooseRoot();
+  const child = selected.snapshot.entries.find((entry) => entry.name === "child");
+  const link = selected.snapshot.entries.find((entry) => entry.name === "link");
+  const selectedReparse = await controller.setSelection(1, [
+    { ordinal: 0, submittedEntryId: link.entryId },
+  ]);
+  assert.equal(selectedReparse.status, "accepted", "visible reparse selection must reach mutation policy");
+  const refusedPin = await controller.setDestination(1, { mode: "visible-entry", entryId: link.entryId });
+  assert.equal(refusedPin.status, "refused");
+  assert.equal(refusedPin.code, "reparse_refused");
+  const pinned = await controller.setDestination(1, { mode: "visible-entry", entryId: child.entryId });
+  assert.equal(pinned.status, "accepted");
+  assert.equal(pinned.snapshot.snapshot.generation, 2);
+  assert.deepEqual({
+    state: pinned.snapshot.snapshot.destinationProjection.state,
+    displayName: pinned.snapshot.snapshot.destinationProjection.displayName,
+    isRoot: pinned.snapshot.snapshot.destinationProjection.isRoot,
+  }, { state: "current", displayName: "child", isRoot: false });
+  const firstDestinationId = pinned.snapshot.snapshot.destinationProjection.entryId;
+  assert.notEqual(firstDestinationId, child.entryId);
+
+  const sourceAttempt = await controller.setSelection(2, [
+    { ordinal: 0, submittedEntryId: firstDestinationId },
+  ]);
+  assert.equal(sourceAttempt.status, "refused");
+
+  const currentChild = pinned.snapshot.snapshot.entries.find((entry) => entry.name === "child");
+  const navigated = await controller.navigate(2, currentChild.entryId);
+  assert.equal(navigated.status, "accepted");
+  assert.equal(navigated.snapshot.snapshot.generation, 3);
+  assert.equal(navigated.snapshot.snapshot.destinationProjection.state, "current");
+  assert.notEqual(navigated.snapshot.snapshot.destinationProjection.entryId, firstDestinationId);
+});
+
+test("selected-root, clear, unavailable and root-change destination states are explicit", async () => {
+  const { controller, filesystem } = await setup([
+    { state: "selected", path: "R", evidencePath: "stubbed" },
+    { state: "selected", path: "S", evidencePath: "stubbed" },
+  ]);
+  await controller.chooseRoot();
+  const rootPin = await controller.setDestination(1, { mode: "selected-root" });
+  assert.equal(rootPin.status, "accepted");
+  assert.equal(rootPin.snapshot.snapshot.destinationProjection.isRoot, true);
+  const cleared = await controller.setDestination(2, { mode: "clear" });
+  assert.equal(cleared.status, "accepted");
+  assert.deepEqual(cleared.snapshot.snapshot.destinationProjection, { state: "none" });
+
+  const child = cleared.snapshot.snapshot.entries.find((entry) => entry.name === "child");
+  const pinned = await controller.setDestination(3, { mode: "visible-entry", entryId: child.entryId });
+  filesystem.stats["R/child"] = { kind: "reparse", byteLength: null, isReparse: true };
+  const refreshed = await controller.refresh();
+  assert.equal(refreshed.status, "accepted");
+  assert.equal(refreshed.snapshot.snapshot.completeness, "complete");
+  assert.deepEqual(refreshed.snapshot.snapshot.destinationProjection, {
+    state: "unavailable", entryId: null, displayName: "child", code: "destination_reparse",
+  });
+
+  const changedRoot = await controller.chooseRoot();
+  assert.equal(changedRoot.status, "accepted");
+  assert.deepEqual(changedRoot.snapshot.destinationProjection, { state: "none" });
+  const afterRootRefresh = await controller.refresh();
+  assert.equal(afterRootRefresh.status, "accepted");
+  assert.deepEqual(afterRootRefresh.snapshot.snapshot.destinationProjection, { state: "none" },
+    "old root destination must not reappear on the next publication");
+});

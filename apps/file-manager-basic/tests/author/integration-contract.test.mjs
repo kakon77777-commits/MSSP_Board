@@ -11,7 +11,7 @@ test("main registers every fixed IPC operation and no generic channel", () => {
   const source = fs.readFileSync(path.join(app, "src", "main", "main.ts"), "utf8");
   for (const channel of [
     "file-manager:choose-root", "file-manager:get-current-directory",
-    "file-manager:navigate", "file-manager:refresh", "file-manager:set-selection",
+    "file-manager:navigate", "file-manager:refresh", "file-manager:set-selection", "file-manager:set-destination",
     "file-manager:create-directory", "file-manager:rename", "file-manager:copy",
     "file-manager:move", "file-manager:trash",
   ]) assert.match(source, new RegExp(`ipcMain\\.handle\\(\\s*["']${channel}["']`), channel);
@@ -26,7 +26,7 @@ test("preload maps each fixed operation and never exposes raw IPC", () => {
   const invoked = [...source.matchAll(/ipcRenderer\.invoke\("([^"]+)"/g)].map((match) => match[1]);
   assert.deepEqual(invoked, [
     "file-manager:choose-root", "file-manager:get-current-directory",
-    "file-manager:navigate", "file-manager:refresh", "file-manager:set-selection",
+    "file-manager:navigate", "file-manager:refresh", "file-manager:set-selection", "file-manager:set-destination",
     "file-manager:create-directory", "file-manager:rename", "file-manager:copy",
     "file-manager:move", "file-manager:trash",
   ]);

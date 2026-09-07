@@ -68,6 +68,7 @@ test("complete root snapshot publishes sorted typed entries and no filesystem pa
   assert.equal(result.snapshot.snapshot.directoryId, null);
   assert.equal(result.snapshot.snapshot.parentEntryId, null);
   assert.equal(result.snapshot.snapshot.completeness, "complete");
+  assert.deepEqual(result.snapshot.snapshot.destinationProjection, { state: "none" });
   assert.deepEqual(result.snapshot.snapshot.entries.map(({ name, kind, byteLength }) => ({ name, kind, byteLength })), [
     { name: "a.txt", kind: "file", byteLength: 4 },
     { name: "link", kind: "reparse", byteLength: null },

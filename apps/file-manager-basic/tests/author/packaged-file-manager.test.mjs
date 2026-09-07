@@ -72,27 +72,32 @@ test("packaged GUI drives root, view, navigation, refresh, selection and mutatio
   await page.locator("#refresh").click();
   await waitGeneration(4);
 
+  await page.locator("#pin-target").selectOption({ label: "child" });
+  await page.locator("#set-destination").click();
+  await waitGeneration(5);
+  assert.equal(await page.locator("#destination-status").textContent(), "child");
+
   await page.locator("#name-input").fill("new-folder");
   await page.locator("#create-directory").click();
-  await waitGeneration(5);
+  await waitGeneration(6);
   assert.equal(await fs.stat(path.join(root, "new-folder")).then((stat) => stat.isDirectory()), true);
 
   await selectEntry("a.txt");
   await page.locator("#name-input").fill("renamed.txt");
   await page.locator("#rename-entry").click();
-  await waitGeneration(6);
+  await waitGeneration(7);
   assert.equal(await fs.readFile(path.join(root, "renamed.txt"), "utf8"), "a");
 
   await selectEntry("renamed.txt");
-  await page.locator("#destination").selectOption({ label: "child" });
+  await page.locator("#destination").selectOption({ label: "child (pinned)" });
   await page.locator("#copy-entries").click();
-  await waitGeneration(7);
+  await waitGeneration(8);
   assert.equal(await fs.readFile(path.join(root, "child", "renamed.txt"), "utf8"), "a");
 
   await selectEntry("b.txt");
-  await page.locator("#destination").selectOption({ label: "child" });
+  await page.locator("#destination").selectOption({ label: "child (pinned)" });
   await page.locator("#move-entries").click();
-  await waitGeneration(8);
+  await waitGeneration(9);
   await assert.rejects(() => fs.access(path.join(root, "b.txt")));
   assert.equal(await fs.readFile(path.join(root, "child", "b.txt"), "utf8"), "bb");
 
