@@ -1,4 +1,9 @@
-import type { EntryId, EntryKind, SnapshotGeneration } from "../sms/file-manager-contract";
+import type {
+  EntryAuthorityRole,
+  EntryId,
+  EntryKind,
+  SnapshotGeneration,
+} from "../sms/file-manager-contract";
 import type { IdentityPort, IdentityResolution } from "../sms/file-manager-ports";
 
 export type EntryIdTokenFactory = () => string | undefined;
@@ -24,12 +29,15 @@ export class EntryIdRegistry implements IdentityPort {
     this.#byPath.clear();
   }
 
-  issue(canonicalPath: string, kind: EntryKind): EntryId {
+  issue(canonicalPath: string, kind: EntryKind, role: EntryAuthorityRole): EntryId {
     if (this.#generation === null) throw new Error("cannot issue an entry id before a generation begins");
-    const existing = this.#byPath.get(canonicalPath);
+    const identityKey = `${role}\u0000${canonicalPath}`;
+    const existing = this.#byPath.get(identityKey);
     if (existing) {
       const resolution = this.#byId.get(existing);
-      if (resolution?.kind !== kind) throw new Error("entry kind changed within one generation");
+      if (resolution?.kind !== kind || resolution.role !== role) {
+        throw new Error("entry kind or role changed within one generation");
+      }
       return existing;
     }
     const token = this.#tokenFactory();
@@ -43,9 +51,10 @@ export class EntryIdRegistry implements IdentityPort {
       canonicalPath,
       generation: this.#generation,
       kind,
+      role,
     };
     this.#byId.set(entryId, resolution);
-    this.#byPath.set(canonicalPath, entryId);
+    this.#byPath.set(identityKey, entryId);
     return entryId;
   }
 

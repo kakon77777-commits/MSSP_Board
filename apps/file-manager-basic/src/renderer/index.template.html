@@ -20,6 +20,8 @@
       <button id="move-entries" type="button">Move</button>
       <button id="trash-entries" type="button">Recycle</button>
       <label>Name <input id="name-input" type="text" autocomplete="off"></label>
+      <label>Pin target <select id="pin-target"><option value="selected-root">Selected root</option></select></label>
+      <button id="set-destination" type="button">Pin destination</button>
       <label>Destination <select id="destination"><option value="">Current directory</option></select></label>
     </div>
   </header>
@@ -33,6 +35,7 @@
       <dt>Snapshot</dt><dd id="snapshot-status">-</dd>
       <dt>Evidence</dt><dd id="evidence-path">-</dd>
       <dt>Error</dt><dd id="error-code">-</dd>
+      <dt>Pinned destination</dt><dd id="destination-status">None</dd>
     </dl>
     <section aria-label="Directory entries">
       <ul id="entries"></ul>

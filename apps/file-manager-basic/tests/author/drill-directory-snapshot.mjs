@@ -13,9 +13,10 @@ const run = () => spawnSync(process.execPath, ["--test", testFile], { cwd: app, 
 
 const attacks = [
   ["launder partial view as complete", 'completeness: observationErrors.length === 0 ? "complete" : "partial"', 'completeness: "complete"'],
-  ["hide observation errors", 'observationErrors,\n                },', 'observationErrors: [],\n                },'],
+  ["hide observation errors", 'observationErrors,\n                    destinationProjection:', 'observationErrors: [],\n                    destinationProjection:'],
   ["hide a reparse entry as its target kind", 'kind: stat.isReparse ? "reparse" : stat.kind,', 'kind: stat.kind,'],
   ["label unavailable read failure as observed", 'status: "failed",\n                code,', 'status: "observed",\n                code,'],
+  ["omit destination projection from a new snapshot", 'destinationProjection: { state: "none" },', 'destinationProjection: undefined,'],
 ];
 
 const control = run();

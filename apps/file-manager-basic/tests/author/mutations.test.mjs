@@ -97,7 +97,9 @@ async function setup() {
   const identities = new EntryIdRegistry(() => `m${++counter}`);
   identities.beginGeneration(1);
   const byPath = {};
-  for (const [subject, stat] of filesystem.subjects) byPath[subject] = identities.issue(subject, stat.kind);
+  for (const [subject, stat] of filesystem.subjects) {
+    byPath[subject] = identities.issue(subject, stat.kind, "visible-entry");
+  }
   const snapshot = {
     schema: "fm.directory-snapshot/v1",
     root: { rootId: "root:r", displayName: "R" },
@@ -110,18 +112,26 @@ async function setup() {
       byteLength: filesystem.subjects.get(subject).byteLength,
     })),
     observationErrors: [],
+    destinationProjection: { state: "none" },
   };
   filesystem.subjects.set("R/hidden.txt", { kind: "file", byteLength: 1, isReparse: false });
   filesystem.subjects.set("R/hidden-dir", { kind: "directory", byteLength: null, isReparse: false });
-  const hiddenFileId = identities.issue("R/hidden.txt", "file");
-  const hiddenDirectoryId = identities.issue("R/hidden-dir", "directory");
+  const hiddenFileId = identities.issue("R/hidden.txt", "file", "visible-entry");
+  const hiddenDirectoryId = identities.issue("R/hidden-dir", "directory", "directory-cursor");
+  const pinnedDestinationId = identities.issue("R/dest", "directory", "pinned-destination");
+  snapshot.destinationProjection = {
+    state: "current", entryId: pinnedDestinationId, displayName: "dest", isRoot: false,
+  };
   const session = new FakeSession(snapshot);
   const recycle = new FakeRecycle(filesystem);
   const orchestrator = new BatchOperationOrchestrator({
     filesystem, recycle, identities, session, validateName: validateSingleSegmentName,
   });
   const item = (subject, ordinal = 0) => ({ ordinal, submittedEntryId: byPath[subject] });
-  return { orchestrator, filesystem, session, recycle, byPath, hiddenFileId, hiddenDirectoryId, item };
+  return {
+    orchestrator, filesystem, session, recycle, byPath, hiddenFileId,
+    hiddenDirectoryId, pinnedDestinationId, item,
+  };
 }
 
 test("create validates name in main-owned logic and publishes only after success", async () => {
@@ -165,9 +175,9 @@ test("rename conflict refuses without overwriting the sentinel", async () => {
 });
 
 test("copy preserves one outcome per ordinal and reports partial execution honestly", async () => {
-  const { orchestrator, filesystem, session, byPath, item } = await setup();
+  const { orchestrator, filesystem, session, pinnedDestinationId, item } = await setup();
   filesystem.fail.add("R/b.txt");
-  const result = await orchestrator.copy(1, [item("R/a.txt", 4), item("R/b.txt", 9)], byPath["R/dest"]);
+  const result = await orchestrator.copy(1, [item("R/a.txt", 4), item("R/b.txt", 9)], pinnedDestinationId);
   assert.equal(result.overallStatus, "partial");
   assert.deepEqual(result.outcomes.map((outcome) => [outcome.ordinal, outcome.status]), [[4, "accepted"], [9, "failed"]]);
   assert.equal(Object.hasOwn(result.outcomes[0], "submittedEntryId"), false);
@@ -178,9 +188,9 @@ test("copy preserves one outcome per ordinal and reports partial execution hones
 });
 
 test("successful mutation plus failed post-scan remains accepted and unavailable", async () => {
-  const { orchestrator, session, byPath, item } = await setup();
+  const { orchestrator, session, pinnedDestinationId, item } = await setup();
   session.nextUnavailable = true;
-  const result = await orchestrator.move(1, [item("R/a.txt")], byPath["R/dest"]);
+  const result = await orchestrator.move(1, [item("R/a.txt")], pinnedDestinationId);
   assert.equal(result.overallStatus, "accepted");
   assert.equal(result.outcomes[0].status, "accepted");
   assert.equal(result.snapshot.state, "unavailable");
@@ -199,14 +209,14 @@ test("trash uses recycle port and distinguishes failure from refusal", async () 
 });
 
 test("copy to a current destination directory uses its canonical id", async () => {
-  const { orchestrator, filesystem, byPath, item } = await setup();
-  const result = await orchestrator.copy(1, [item("R/a.txt")], byPath["R/dest"]);
+  const { orchestrator, filesystem, pinnedDestinationId, item } = await setup();
+  const result = await orchestrator.copy(1, [item("R/a.txt")], pinnedDestinationId);
   assert.equal(result.overallStatus, "accepted");
   assert.deepEqual(filesystem.calls, [["copy", "R/a.txt", "R/dest/a.txt"]]);
 });
 
 test("current-generation cursors or hidden handles do not become mutation authority", async () => {
-  const { orchestrator, filesystem, recycle, hiddenFileId, hiddenDirectoryId, item } = await setup();
+  const { orchestrator, filesystem, recycle, byPath, hiddenFileId, hiddenDirectoryId, pinnedDestinationId, item } = await setup();
   const hidden = { ordinal: 0, submittedEntryId: hiddenFileId };
   const trash = await orchestrator.trash(1, [hidden]);
   assert.equal(trash.overallStatus, "refused");
@@ -221,4 +231,12 @@ test("current-generation cursors or hidden handles do not become mutation author
   assert.equal(create.status, "refused");
   assert.equal(create.code, "invalid_entry_id");
   assert.equal(filesystem.subjects.has("R/hidden-dir/unauthorized-child"), false);
+
+  const directVisibleDestination = await orchestrator.copy(1, [item("R/a.txt")], byPath["R/dest"]);
+  assert.equal(directVisibleDestination.overallStatus, "refused",
+    "visible directory must be pinned before it becomes transfer authority");
+  const destinationAsSource = await orchestrator.trash(1, [
+    { ordinal: 0, submittedEntryId: pinnedDestinationId },
+  ]);
+  assert.equal(destinationAsSource.overallStatus, "refused");
 });

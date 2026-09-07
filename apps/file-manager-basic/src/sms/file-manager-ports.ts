@@ -2,6 +2,7 @@ import type {
   DirectorySnapshot,
   DirectoryObservationResult,
   EntryId,
+  EntryAuthorityRole,
   EntryKind,
   EvidencePath,
   SnapshotResult,
@@ -51,11 +52,12 @@ export interface IdentityResolution {
   canonicalPath: string;
   generation: SnapshotGeneration;
   kind: EntryKind;
+  role: EntryAuthorityRole;
 }
 
 export interface IdentityPort {
   beginGeneration(generation: SnapshotGeneration): void;
-  issue(canonicalPath: string, kind: EntryKind): EntryId;
+  issue(canonicalPath: string, kind: EntryKind, role: EntryAuthorityRole): EntryId;
   resolve(entryId: string, generation: SnapshotGeneration): IdentityResolution | null;
   classify(entryId: string, generation: SnapshotGeneration): "current" | "cross_generation" | "unknown";
   currentGeneration(): SnapshotGeneration | null;

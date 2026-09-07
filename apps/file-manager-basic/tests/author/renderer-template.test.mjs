@@ -16,6 +16,7 @@ test("renderer template has observable root, snapshot, selection and result regi
     "rename-entry", "copy-entries", "move-entries", "trash-entries",
     "root-label", "generation", "completeness", "entries", "selection",
     "operation-status", "snapshot-status", "evidence-path", "error-code",
+    "pin-target", "set-destination", "destination", "destination-status",
   ]) {
     assert.match(html, new RegExp(`id=["']${id}["']`), `missing #${id}`);
   }

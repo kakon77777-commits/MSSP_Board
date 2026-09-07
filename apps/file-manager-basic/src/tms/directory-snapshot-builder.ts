@@ -64,13 +64,13 @@ export class DirectorySnapshotBuilder implements SnapshotPort {
     const atRoot = this.filesystem.same(input.directoryPath, input.rootPath);
     const directoryId = atRoot
       ? null
-      : this.identities.issue(input.directoryPath, "directory");
+      : this.identities.issue(input.directoryPath, "directory", "directory-cursor");
     const parentPath = atRoot ? input.rootPath : this.filesystem.parent(input.directoryPath);
     const parentEntryId = atRoot || this.filesystem.same(parentPath, input.rootPath)
       ? null
-      : this.identities.issue(parentPath, "directory");
+      : this.identities.issue(parentPath, "directory", "parent-cursor");
     const entries: EntryView[] = observed.map((entry) => ({
-      entryId: this.identities.issue(entry.canonicalPath, entry.kind),
+      entryId: this.identities.issue(entry.canonicalPath, entry.kind, "visible-entry"),
       name: entry.name,
       kind: entry.kind,
       byteLength: entry.byteLength,
@@ -89,6 +89,7 @@ export class DirectorySnapshotBuilder implements SnapshotPort {
           completeness: observationErrors.length === 0 ? "complete" : "partial",
           entries,
           observationErrors,
+          destinationProjection: { state: "none" },
         },
       },
       evidencePath: input.evidencePath,

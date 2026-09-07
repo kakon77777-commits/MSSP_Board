@@ -4,6 +4,21 @@ export type EntryId = string;
 export type EntryKind = "file" | "directory" | "reparse";
 export type ViewCompleteness = "complete" | "partial";
 export type EvidencePath = "stubbed" | "native";
+export type EntryAuthorityRole =
+  | "visible-entry"
+  | "directory-cursor"
+  | "parent-cursor"
+  | "pinned-destination";
+
+export type DestinationProjection =
+  | { state: "none" }
+  | { state: "current"; entryId: EntryId; displayName: string; isRoot: boolean }
+  | {
+      state: "unavailable";
+      entryId: null;
+      displayName: string;
+      code: "destination_unavailable" | "destination_reparse";
+    };
 
 export type ObservationFailureCode =
   | "root_unreachable_after_operation"
@@ -51,6 +66,7 @@ export interface DirectorySnapshot {
   completeness: ViewCompleteness;
   entries: EntryView[];
   observationErrors: Array<{ entryId: EntryId | null; code: ObservationFailureCode }>;
+  destinationProjection: DestinationProjection;
 }
 
 export type SnapshotResult =
@@ -135,6 +151,33 @@ export type ViewCommandResult =
     }
   | {
       operation: "navigate" | "refresh";
+      status: "failed";
+      code: ExecutionFailureCode | ObservationFailureCode;
+      snapshot: SnapshotResult;
+      evidencePath: EvidencePath;
+    };
+
+export type SetDestinationRequest =
+  | { mode: "visible-entry"; entryId: EntryId }
+  | { mode: "selected-root" }
+  | { mode: "clear" };
+
+export type DestinationCommandResult =
+  | {
+      operation: "set-destination";
+      status: "accepted";
+      snapshot: Extract<SnapshotResult, { state: "current" }>;
+      evidencePath: EvidencePath;
+    }
+  | {
+      operation: "set-destination";
+      status: "refused";
+      code: RefusalCode;
+      snapshot: Extract<SnapshotResult, { state: "unchanged" }>;
+      evidencePath: EvidencePath;
+    }
+  | {
+      operation: "set-destination";
       status: "failed";
       code: ExecutionFailureCode | ObservationFailureCode;
       snapshot: SnapshotResult;

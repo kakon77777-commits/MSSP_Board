@@ -46,6 +46,12 @@ const attacks = [
     from: 'if (this.#byId.has(entryId) || this.#historicalIds.has(entryId))',
     to: 'if (false)',
   },
+  {
+    label: "collapse distinct authority roles onto one path id",
+    file: registry,
+    from: 'const identityKey = `${role}\\u0000${canonicalPath}`;',
+    to: 'const identityKey = canonicalPath;',
+  },
 ];
 
 const control = run();

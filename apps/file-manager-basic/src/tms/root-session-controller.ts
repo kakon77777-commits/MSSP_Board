@@ -1,9 +1,12 @@
 import type {
   DirectoryObservationResult,
   DirectorySnapshot,
+  DestinationCommandResult,
+  DestinationProjection,
   EvidencePath,
   RefusedSelectionItemOutcome,
   RootSelectionResult,
+  SetDestinationRequest,
   SelectionRequestItem,
   SelectionResult,
   ViewCommandResult,
@@ -25,6 +28,12 @@ export interface RootSessionControllerDependencies {
   rootToken: () => string | undefined;
 }
 
+type PinnedDestination = {
+  canonicalPath: string;
+  displayName: string;
+  isRoot: boolean;
+} | null;
+
 export class RootSessionController implements MutationSessionPort {
   readonly #picker: RootPickerPort;
   readonly #filesystem: FilesystemPort;
@@ -38,6 +47,7 @@ export class RootSessionController implements MutationSessionPort {
   #snapshot: DirectorySnapshot | null = null;
   #evidencePath: EvidencePath = "native";
   #selectedEntryIds: string[] = [];
+  #pinnedDestination: PinnedDestination = null;
   #lastGeneration = 0;
 
   constructor(dependencies: RootSessionControllerDependencies) {
@@ -98,6 +108,7 @@ export class RootSessionController implements MutationSessionPort {
     this.#rootDisplayName = displayName;
     this.#directoryPath = canonical;
     this.#snapshot = result.snapshot.snapshot;
+    this.#pinnedDestination = null;
     this.#evidencePath = picked.evidencePath;
     this.#selectedEntryIds = [];
     this.#lastGeneration = generation;
@@ -154,17 +165,17 @@ export class RootSessionController implements MutationSessionPort {
       evidencePath: this.#evidencePath,
     });
     if (result.status === "failed") return result.snapshot;
-    this.#snapshot = result.snapshot.snapshot;
+    this.#snapshot = await this.#projectDestination(result.snapshot.snapshot);
     this.#lastGeneration = generation;
     this.#selectedEntryIds = [];
-    return result.snapshot;
+    return { state: "current" as const, snapshot: this.#snapshot };
   }
 
   async refresh(): Promise<ViewCommandResult> {
     if (!this.#snapshot || !this.#rootPath || !this.#rootId || !this.#rootDisplayName || !this.#directoryPath) {
       return this.#viewFailure("refresh", "root_removed");
     }
-    return this.#publish("refresh", this.#directoryPath);
+    return this.#publish("refresh", this.#directoryPath) as Promise<ViewCommandResult>;
   }
 
   async navigate(generation: number, entryId: string | null): Promise<ViewCommandResult> {
@@ -184,6 +195,9 @@ export class RootSessionController implements MutationSessionPort {
     } else {
       const resolved = this.#identities.resolve(entryId, generation);
       if (!resolved) return this.#viewRefusal("navigate", "invalid_entry_id");
+      if (resolved.role !== "visible-entry" && resolved.role !== "parent-cursor") {
+        return this.#viewRefusal("navigate", "invalid_entry_id");
+      }
       if (resolved.kind === "reparse") return this.#viewRefusal("navigate", "reparse_refused");
       if (resolved.kind !== "directory") return this.#viewRefusal("navigate", "path_rejected");
       target = resolved.canonicalPath;
@@ -196,12 +210,68 @@ export class RootSessionController implements MutationSessionPort {
       target = await this.#filesystem.realpath(target);
       if (!this.#filesystem.isWithin(this.#rootPath, target)) return this.#viewRefusal("navigate", "path_rejected");
     } catch { return this.#viewFailure("navigate", "directory_read_failed"); }
-    return this.#publish("navigate", target);
+    return this.#publish("navigate", target) as Promise<ViewCommandResult>;
+  }
+
+  async setDestination(
+    generation: number,
+    request: SetDestinationRequest,
+  ): Promise<DestinationCommandResult> {
+    if (!this.#snapshot || !this.#rootPath || !this.#directoryPath) {
+      throw new Error("no root selected");
+    }
+    if (generation !== this.#snapshot.generation) {
+      return {
+        operation: "set-destination",
+        status: "refused",
+        code: "stale_generation",
+        snapshot: { state: "unchanged", snapshot: this.#snapshot },
+        evidencePath: this.#evidencePath,
+      };
+    }
+
+    let nextPin: PinnedDestination;
+    if (request.mode === "clear") {
+      nextPin = null;
+    } else if (request.mode === "selected-root") {
+      nextPin = {
+        canonicalPath: this.#rootPath,
+        displayName: this.#rootDisplayName as string,
+        isRoot: true,
+      };
+    } else if (request.mode === "visible-entry") {
+      const visible = this.#snapshot.entries.find((entry) => entry.entryId === request.entryId);
+      if (visible?.kind === "reparse") return this.#destinationRefusal("reparse_refused");
+      const resolved = this.#identities.resolve(request.entryId, generation);
+      if (!visible || visible.kind !== "directory" || !resolved || resolved.role !== "visible-entry") {
+        return this.#destinationRefusal("invalid_entry_id");
+      }
+      const refusal = await this.#revalidateDestination(resolved.canonicalPath);
+      if (refusal !== null) return this.#destinationRefusal(refusal);
+      nextPin = {
+        canonicalPath: resolved.canonicalPath,
+        displayName: visible.name,
+        isRoot: false,
+      };
+    } else {
+      return this.#destinationRefusal("invalid_argument");
+    }
+
+    const previous = this.#pinnedDestination;
+    this.#pinnedDestination = nextPin;
+    const result = await this.#publish("set-destination", this.#directoryPath);
+    if (result.status === "failed") this.#pinnedDestination = previous;
+    return result as DestinationCommandResult;
   }
 
   refuseViewCommand(operation: "navigate" | "refresh", code: "invalid_argument"): ViewCommandResult {
     if (!this.#snapshot) return this.#viewFailure(operation, "root_removed");
     return this.#viewRefusal(operation, code);
+  }
+
+  refuseDestinationCommand(code: "invalid_argument"): DestinationCommandResult {
+    if (!this.#snapshot) throw new Error("no root selected");
+    return this.#destinationRefusal(code);
   }
 
   async setSelection(generation: number, items: SelectionRequestItem[]): Promise<SelectionResult> {
@@ -273,7 +343,10 @@ export class RootSessionController implements MutationSessionPort {
     };
   }
 
-  async #publish(operation: "navigate" | "refresh", directoryPath: string): Promise<ViewCommandResult> {
+  async #publish(
+    operation: "navigate" | "refresh" | "set-destination",
+    directoryPath: string,
+  ): Promise<ViewCommandResult | DestinationCommandResult> {
     const generation = this.#lastGeneration + 1;
     const result = await this.#snapshots.build({
       rootPath: this.#rootPath as string,
@@ -293,10 +366,15 @@ export class RootSessionController implements MutationSessionPort {
       };
     }
     this.#directoryPath = directoryPath;
-    this.#snapshot = result.snapshot.snapshot;
+    this.#snapshot = await this.#projectDestination(result.snapshot.snapshot);
     this.#lastGeneration = generation;
     this.#selectedEntryIds = [];
-    return { operation, status: "accepted", snapshot: result.snapshot, evidencePath: this.#evidencePath };
+    return {
+      operation,
+      status: "accepted",
+      snapshot: { state: "current", snapshot: this.#snapshot },
+      evidencePath: this.#evidencePath,
+    };
   }
 
   #viewRefusal(operation: "navigate" | "refresh", code: "invalid_argument" | "stale_generation" | "invalid_entry_id" | "reparse_refused" | "path_rejected" | "navigate_above_root"): ViewCommandResult {
@@ -322,6 +400,76 @@ export class RootSessionController implements MutationSessionPort {
       },
       evidencePath: this.#evidencePath,
     };
+  }
+
+  #destinationRefusal(code: "invalid_argument" | "invalid_entry_id" | "stale_generation" | "reparse_refused" | "path_rejected"): DestinationCommandResult {
+    return {
+      operation: "set-destination",
+      status: "refused",
+      code,
+      snapshot: { state: "unchanged", snapshot: this.#snapshot as DirectorySnapshot },
+      evidencePath: this.#evidencePath,
+    };
+  }
+
+  async #revalidateDestination(subject: string): Promise<"reparse_refused" | "path_rejected" | null> {
+    try {
+      const stat = await this.#filesystem.lstat(subject);
+      if (stat.isReparse || stat.kind === "reparse") return "reparse_refused";
+      if (stat.kind !== "directory") return "path_rejected";
+      const canonical = await this.#filesystem.realpath(subject);
+      if (!this.#filesystem.isWithin(this.#rootPath as string, canonical)) return "path_rejected";
+      return null;
+    } catch { return "path_rejected"; }
+  }
+
+  async #projectDestination(snapshot: DirectorySnapshot): Promise<DirectorySnapshot> {
+    const pin = this.#pinnedDestination;
+    if (pin === null) return { ...snapshot, destinationProjection: { state: "none" } };
+    let projection: DestinationProjection;
+    try {
+      const stat = await this.#filesystem.lstat(pin.canonicalPath);
+      if (stat.isReparse || stat.kind === "reparse") {
+        projection = {
+          state: "unavailable",
+          entryId: null,
+          displayName: pin.displayName,
+          code: "destination_reparse",
+        };
+      } else if (stat.kind !== "directory") {
+        projection = {
+          state: "unavailable",
+          entryId: null,
+          displayName: pin.displayName,
+          code: "destination_unavailable",
+        };
+      } else {
+        const canonical = await this.#filesystem.realpath(pin.canonicalPath);
+        if (!this.#filesystem.isWithin(this.#rootPath as string, canonical)) {
+          projection = {
+            state: "unavailable",
+            entryId: null,
+            displayName: pin.displayName,
+            code: "destination_unavailable",
+          };
+        } else {
+          projection = {
+            state: "current",
+            entryId: this.#identities.issue(canonical, "directory", "pinned-destination"),
+            displayName: pin.displayName,
+            isRoot: pin.isRoot,
+          };
+        }
+      }
+    } catch {
+      projection = {
+        state: "unavailable",
+        entryId: null,
+        displayName: pin.displayName,
+        code: "destination_unavailable",
+      };
+    }
+    return { ...snapshot, destinationProjection: projection };
   }
 
 }

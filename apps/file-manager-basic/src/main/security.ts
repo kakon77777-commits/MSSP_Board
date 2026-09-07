@@ -82,6 +82,7 @@ export const PRELOAD_API_SURFACE = Object.freeze([
   "navigate",
   "refresh",
   "setSelection",
+  "setDestination",
   "createDirectory",
   "renameEntries",
   "copyEntries",

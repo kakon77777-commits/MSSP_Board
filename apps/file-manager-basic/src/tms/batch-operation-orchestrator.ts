@@ -66,7 +66,7 @@ export class BatchOperationOrchestrator {
         return this.#createRefusal(requestedName, "invalid_entry_id", context);
       }
       const parent = this.#identities.resolve(parentEntryId, generation);
-      if (!parent || parent.kind !== "directory") {
+      if (!parent || parent.kind !== "directory" || parent.role !== "directory-cursor") {
         return this.#createRefusal(requestedName, "invalid_entry_id", context);
       }
       const refusal = await this.#revalidate(parent, context.rootPath, "directory");
@@ -172,12 +172,12 @@ export class BatchOperationOrchestrator {
     }
     let destinationPath = context.directoryPath;
     if (destinationDirectoryId !== null) {
-      if (!context.snapshot.entries.some((entry) =>
-        entry.entryId === destinationDirectoryId && entry.kind === "directory")) {
+      if (context.snapshot.destinationProjection.state !== "current"
+          || context.snapshot.destinationProjection.entryId !== destinationDirectoryId) {
         return this.#refuseAll(operation, items, context, items.map(() => "invalid_entry_id"));
       }
       const destination = this.#identities.resolve(destinationDirectoryId, generation);
-      if (!destination || destination.kind !== "directory") {
+      if (!destination || destination.kind !== "directory" || destination.role !== "pinned-destination") {
         return this.#refuseAll(operation, items, context, items.map(() => "invalid_entry_id"));
       }
       const destinationRefusal = await this.#revalidate(destination, context.rootPath, "directory");
@@ -257,7 +257,7 @@ export class BatchOperationOrchestrator {
         continue;
       }
       const resolution = this.#identities.resolve(item.submittedEntryId, generation);
-      if (!resolution) {
+      if (!resolution || resolution.role !== "visible-entry") {
         resolutions.push(null); refusalCodes.push("invalid_entry_id"); continue;
       }
       const refusal = await this.#revalidate(resolution, context.rootPath);

@@ -17,8 +17,24 @@ const attacks = [
   ["hide successful mutation behind unchanged snapshot", '? await this.#session.publishAfterMutation()\n            : this.#unchanged(context);', '? this.#unchanged(context)\n            : this.#unchanged(context);'],
   ["replace recycle operation with a no-op", 'await this.#recycle.recycle(resolution.canonicalPath);', 'void resolution.canonicalPath;'],
   ["duplicate submitted identity into accepted outcome", 'return { ordinal: item.ordinal, entryId: resolution.entryId, status: "accepted" };', 'return { ordinal: item.ordinal, entryId: resolution.entryId, submittedEntryId: item.submittedEntryId, status: "accepted" };'],
-  ["allow a non-entry cursor as mutation source", 'if (!context.snapshot.entries.some((entry) => entry.entryId === item.submittedEntryId))', "if (false)"],
-  ["allow a hidden directory id as transfer destination", 'if (!context.snapshot.entries.some((entry) => entry.entryId === destinationDirectoryId && entry.kind === "directory"))', "if (false)"],
+  [
+    "allow a non-entry cursor as mutation source",
+    'if (!context.snapshot.entries.some((entry) => entry.entryId === item.submittedEntryId))',
+    "if (false)",
+    [[
+      'if (!resolution || resolution.role !== "visible-entry")',
+      'if (!resolution)',
+    ]],
+  ],
+  [
+    "allow an unpinned current directory id as transfer destination",
+    'if (context.snapshot.destinationProjection.state !== "current"\n                || context.snapshot.destinationProjection.entryId !== destinationDirectoryId)',
+    "if (false)",
+    [[
+      'if (!destination || destination.kind !== "directory" || destination.role !== "pinned-destination")',
+      'if (!destination || destination.kind !== "directory")',
+    ]],
+  ],
   ["allow create under a non-current directory cursor", 'if (parentEntryId !== context.snapshot.directoryId)', "if (false)"],
 ];
 
@@ -26,12 +42,16 @@ const control = run();
 process.stdout.write(`control ${control.status === 0 ? "green" : "RED"}\n`);
 if (control.status !== 0) process.exit(1);
 let green = 0, errors = 0, dna = 0;
-for (const [label, from, to] of attacks) {
+for (const [label, from, to, extraReplacements = []] of attacks) {
   const before = fs.readFileSync(subject);
   const text = before.toString("utf8");
-  if (!text.includes(from)) { process.stdout.write(`DID_NOT_APPLY ${label}\n`); dna += 1; continue; }
+  if (!text.includes(from) || extraReplacements.some(([extraFrom]) => !text.includes(extraFrom))) {
+    process.stdout.write(`DID_NOT_APPLY ${label}\n`); dna += 1; continue;
+  }
   try {
-    fs.writeFileSync(subject, text.replace(from, to), "utf8");
+    let changed = text.replace(from, to);
+    for (const [extraFrom, extraTo] of extraReplacements) changed = changed.replace(extraFrom, extraTo);
+    fs.writeFileSync(subject, changed, "utf8");
     const result = run();
     if (result.status === 0) { process.stdout.write(`GREEN ${label}\n`); green += 1; }
     else if (result.error) { process.stdout.write(`ERROR ${label}: ${result.error.message}\n`); errors += 1; }

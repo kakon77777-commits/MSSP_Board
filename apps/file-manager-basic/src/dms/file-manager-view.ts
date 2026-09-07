@@ -2,6 +2,7 @@ import type {
   CreateDirectoryResult,
   DirectoryObservationResult,
   DirectorySnapshot,
+  DestinationCommandResult,
   MutationResult,
   RootSelectionResult,
   SelectionResult,
@@ -28,12 +29,22 @@ export function renderSnapshot(snapshot: DirectorySnapshot): void {
   setText("completeness", snapshot.completeness);
   const list = element<HTMLUListElement>("entries");
   const destination = element<HTMLSelectElement>("destination");
+  const pinTarget = element<HTMLSelectElement>("pin-target");
   if (list) list.replaceChildren();
   if (destination) {
     const current = document.createElement("option");
     current.value = "";
     current.textContent = "Current directory";
     destination.replaceChildren(current);
+  }
+  if (pinTarget) {
+    const root = document.createElement("option");
+    root.value = "selected-root";
+    root.textContent = "Selected root";
+    const clear = document.createElement("option");
+    clear.value = "clear";
+    clear.textContent = "Clear pin";
+    pinTarget.replaceChildren(root, clear);
   }
   for (const entry of snapshot.entries) {
     if (list) {
@@ -61,11 +72,28 @@ export function renderSnapshot(snapshot: DirectorySnapshot): void {
       list.append(row);
     }
     if (destination && entry.kind === "directory") {
+      if (pinTarget) {
+        const option = document.createElement("option");
+        option.value = `visible:${entry.entryId}`;
+        option.textContent = entry.name;
+        pinTarget.append(option);
+      }
+    }
+  }
+  const projection = snapshot.destinationProjection;
+  if (projection.state === "current") {
+    setText("destination-status", `${projection.displayName}${projection.isRoot ? " (root)" : ""}`);
+    if (destination) {
       const option = document.createElement("option");
-      option.value = entry.entryId;
-      option.textContent = entry.name;
+      option.value = projection.entryId;
+      option.textContent = `${projection.displayName} (pinned)`;
+      option.selected = true;
       destination.append(option);
     }
+  } else if (projection.state === "unavailable") {
+    setText("destination-status", `${projection.displayName} (${projection.code})`);
+  } else {
+    setText("destination-status", "None");
   }
 }
 
@@ -100,6 +128,11 @@ export function renderDirectoryObservation(result: DirectoryObservationResult): 
 }
 
 export function renderViewCommand(result: ViewCommandResult): void {
+  renderEnvelope(result.status, result.snapshot, result.evidencePath,
+    result.status === "accepted" ? "" : result.code);
+}
+
+export function renderDestinationCommand(result: DestinationCommandResult): void {
   renderEnvelope(result.status, result.snapshot, result.evidencePath,
     result.status === "accepted" ? "" : result.code);
 }

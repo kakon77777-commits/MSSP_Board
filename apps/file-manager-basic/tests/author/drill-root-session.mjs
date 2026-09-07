@@ -18,6 +18,9 @@ const attacks = [
   ["allow reparse navigation", 'if (resolved.kind === "reparse")', "if (false)"],
   ["deduplicate repeated selection ids into success", 'if ((counts.get(item.submittedEntryId) ?? 0) > 1)', "if (false)"],
   ["treat non-entry cursors as selectable", 'if (!this.#snapshot.entries.some((entry) => entry.entryId === item.submittedEntryId))', "if (false)"],
+  ["reuse one pinned destination id across generations", 'entryId: this.#identities.issue(canonical, "directory", "pinned-destination"),', 'entryId: "entry:fixed-destination",'],
+  ["retain destination pin across root change", "this.#pinnedDestination = null;", "void this.#pinnedDestination;", true],
+  ["contaminate directory completeness when destination is unavailable", "return { ...snapshot, destinationProjection: projection };", 'return { ...snapshot, completeness: projection.state === "unavailable" ? "partial" : snapshot.completeness, destinationProjection: projection };'],
 ];
 
 function apply(text, attack) {

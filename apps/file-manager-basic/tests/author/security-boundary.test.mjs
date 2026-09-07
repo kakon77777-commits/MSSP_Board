@@ -14,6 +14,7 @@ const expectedSurface = [
   "navigate",
   "refresh",
   "setSelection",
+  "setDestination",
   "createDirectory",
   "renameEntries",
   "copyEntries",
