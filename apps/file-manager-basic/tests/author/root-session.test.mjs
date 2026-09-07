@@ -142,6 +142,11 @@ test("child and parent navigation publish snapshots; root cannot navigate above 
   assert.equal(into.status, "accepted");
   assert.equal(into.snapshot.snapshot.generation, 2);
   assert.ok(into.snapshot.snapshot.directoryId);
+  const cursorSelection = await controller.setSelection(2, [
+    { ordinal: 0, submittedEntryId: into.snapshot.snapshot.directoryId },
+  ]);
+  assert.equal(cursorSelection.status, "refused", "current directory cursor is not a visible selectable entry");
+  assert.equal(cursorSelection.outcomes[0].code, "unknown_entry_id");
   const parent = await controller.navigate(2, null);
   assert.equal(parent.status, "accepted");
   assert.equal(parent.snapshot.snapshot.generation, 3);

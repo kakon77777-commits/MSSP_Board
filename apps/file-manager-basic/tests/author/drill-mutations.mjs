@@ -17,6 +17,9 @@ const attacks = [
   ["hide successful mutation behind unchanged snapshot", '? await this.#session.publishAfterMutation()\n            : this.#unchanged(context);', '? this.#unchanged(context)\n            : this.#unchanged(context);'],
   ["replace recycle operation with a no-op", 'await this.#recycle.recycle(resolution.canonicalPath);', 'void resolution.canonicalPath;'],
   ["duplicate submitted identity into accepted outcome", 'return { ordinal: item.ordinal, entryId: resolution.entryId, status: "accepted" };', 'return { ordinal: item.ordinal, entryId: resolution.entryId, submittedEntryId: item.submittedEntryId, status: "accepted" };'],
+  ["allow a non-entry cursor as mutation source", 'if (!context.snapshot.entries.some((entry) => entry.entryId === item.submittedEntryId))', "if (false)"],
+  ["allow a hidden directory id as transfer destination", 'if (!context.snapshot.entries.some((entry) => entry.entryId === destinationDirectoryId && entry.kind === "directory"))', "if (false)"],
+  ["allow create under a non-current directory cursor", 'if (parentEntryId !== context.snapshot.directoryId)', "if (false)"],
 ];
 
 const control = run();

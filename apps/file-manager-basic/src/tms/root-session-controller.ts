@@ -216,6 +216,9 @@ export class RootSessionController implements MutationSessionPort {
     const codes = items.map((item) => {
       if (item.submittedEntryId === null) return "missing_entry_id" as const;
       if ((counts.get(item.submittedEntryId) ?? 0) > 1) return "duplicate_entry_id" as const;
+      if (!this.#snapshot!.entries.some((entry) => entry.entryId === item.submittedEntryId)) {
+        return "unknown_entry_id" as const;
+      }
       const classification = this.#identities.classify(item.submittedEntryId, generation);
       return classification === "current" ? null
         : classification === "cross_generation" ? "cross_generation_entry_id" as const

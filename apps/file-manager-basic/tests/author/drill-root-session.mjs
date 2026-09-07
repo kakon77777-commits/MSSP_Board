@@ -17,7 +17,7 @@ const attacks = [
   ["stop publishing a new refresh generation", "const generation = this.#lastGeneration + 1;", "const generation = this.#lastGeneration;", true],
   ["allow reparse navigation", 'if (resolved.kind === "reparse")', "if (false)"],
   ["deduplicate repeated selection ids into success", 'if ((counts.get(item.submittedEntryId) ?? 0) > 1)', "if (false)"],
-  ["treat every selection identity as current", 'return classification === "current" ? null', "return true ? null"],
+  ["treat non-entry cursors as selectable", 'if (!this.#snapshot.entries.some((entry) => entry.entryId === item.submittedEntryId))', "if (false)"],
 ];
 
 function apply(text, attack) {
