@@ -18,9 +18,10 @@ test("pinned destination is reissued with nested source IDs and reaches partial 
     assert.equal(selected.snapshot.generation, 1);
     const destination = selected.snapshot.entries.find((entry) => entry.name === "dest-copy");
 
+    await page.locator("#pin-target").selectOption({ label: "dest-copy" });
     const pinned = await performAndRead(
       page,
-      () => page.locator("#destination").selectOption(destination.entryId),
+      () => page.locator("#set-destination").click(),
     );
     assert.equal(pinned.operation, "set-destination");
     assert.equal(pinned.status, "accepted");

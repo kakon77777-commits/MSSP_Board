@@ -35,9 +35,10 @@ async function setNameAndRun(page, control, name) {
 }
 
 async function pinDestination(page, name) {
+  await page.locator("#pin-target").selectOption({ label: name });
   const result = await performAndRead(
     page,
-    () => page.locator("#destination").selectOption({ label: name }),
+    () => page.locator("#set-destination").click(),
   );
   assert.equal(result.operation, "set-destination");
   assert.equal(result.status, "accepted");
