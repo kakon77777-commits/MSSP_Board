@@ -19,6 +19,14 @@ const rootNames = manifest.entries
   .filter((entry) => !entry.path.includes("/"))
   .map((entry) => entry.path)
   .sort((a, b) => a.localeCompare(b));
+const rootProjection = manifest.entries
+  .filter((entry) => !entry.path.includes("/"))
+  .map((entry) => ({
+    name: entry.path,
+    kind: entry.kind,
+    byteLength: entry.kind === "file" ? entry.bytes : null,
+  }))
+  .sort((left, right) => left.name.localeCompare(right.name));
 
 test("packaged root/view/navigation and selection use current opaque identities", async () => {
   const harness = await launchPackagedFixture(manifest);
@@ -35,15 +43,21 @@ test("packaged root/view/navigation and selection use current opaque identities"
       await page.locator("#entries li").evaluateAll((rows) => rows.map((row) => row.dataset.name)),
       rootNames,
     );
+    assert.deepEqual(
+      selected.snapshot.entries.map(({ name, kind, byteLength }) => ({ name, kind, byteLength })),
+      rootProjection,
+    );
 
+    const copyId = selected.snapshot.entries.find((entry) => entry.name === "copy-file.bin").entryId;
+    const moveId = selected.snapshot.entries.find((entry) => entry.name === "move-file.txt").entryId;
     const single = await selectEntry(page, "copy-file.bin");
     assert.equal(single.status, "accepted");
     assert.equal(single.currentSnapshot.generation, 1);
-    assert.equal(single.outcomes.length, 1);
+    assert.deepEqual(single.outcomes.map((outcome) => outcome.entryId), [copyId]);
     const multi = await selectEntry(page, "move-file.txt");
     assert.equal(multi.status, "accepted");
     assert.equal(multi.currentSnapshot.generation, 1);
-    assert.equal(multi.outcomes.length, 2);
+    assert.deepEqual(new Set(multi.outcomes.map((outcome) => outcome.entryId)), new Set([copyId, moveId]));
 
     const into = await performAndRead(
       page,
@@ -108,12 +122,14 @@ test("refresh publishes unchanged and external snapshots and rejects old identit
     );
     const oldId = intoRefresh.snapshot.snapshot.entries[0].entryId;
 
-    await withRefreshChange(root, manifest, async () => {
+    await withRefreshChange(root, manifest, async ({ addedPath }) => {
       const changed = await performAndRead(page, () => page.locator("#refresh").click());
       assert.equal(changed.status, "accepted");
       assert.equal(changed.snapshot.snapshot.generation, 4);
-      const names = changed.snapshot.snapshot.entries.map((entry) => entry.name);
-      assert.deepEqual(names, ["external-added.bin"]);
+      assert.deepEqual(
+        changed.snapshot.snapshot.entries.map(({ name, kind, byteLength }) => ({ name, kind, byteLength })),
+        [{ name: "external-added.bin", kind: "file", byteLength: 4 }],
+      );
 
       const stale = await page.evaluate(
         ({ entryId }) => window.fileManager.setSelection(3, [{ ordinal: 0, submittedEntryId: entryId }]),
@@ -123,6 +139,7 @@ test("refresh publishes unchanged and external snapshots and rejects old identit
       assert.equal(stale.code, "stale_generation");
       assert.equal(stale.outcomes[0].code, "cross_generation_entry_id");
       assert.equal(stale.currentSnapshot.generation, 4);
+      assert.deepEqual(readFileSync(addedPath), Buffer.from("a1b2c3d4", "hex"));
     });
   } finally {
     await harness.close();
