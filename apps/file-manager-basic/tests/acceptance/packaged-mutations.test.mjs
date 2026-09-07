@@ -206,10 +206,13 @@ for (const scenario of [
       await chooseRoot(page);
       const pinned = await pinDestination(page, scenario.destination);
       const before = pinned.snapshot.snapshot.generation;
+      const started = performance.now();
       const result = await runSelectedMutation(page, scenario.source, scenario.control);
+      const elapsedMs = performance.now() - started;
       assert.equal(result.overallStatus, "accepted");
       assert.equal(result.snapshot.state, "current");
       assert.equal(result.snapshot.snapshot.generation, before + 1);
+      assert.equal(elapsedMs < 30_000, true, `single GUI batch exceeded hard cap: ${elapsedMs}ms`);
       for (const directory of scenario.expectedDirectories) {
         assert.equal(existsSync(path.join(root, scenario.expectedRoot, ...directory.split("/"))), true);
       }
