@@ -1,9 +1,11 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
+import crypto from "node:crypto";
 import { once } from "node:events";
 import {
   existsSync,
   lstatSync,
   mkdirSync,
+  readFileSync,
   realpathSync,
   renameSync,
   rmdirSync,
@@ -13,6 +15,25 @@ import {
 import path from "node:path";
 
 const allowedParent = path.resolve("D:/Ai/work together");
+const sha256Text = (value) => crypto.createHash("sha256").update(value, "utf8").digest("hex");
+
+function runPowerShell(script, environment) {
+  const result = spawnSync(
+    "powershell.exe",
+    ["-NoProfile", "-NonInteractive", "-Command", script],
+    {
+      encoding: "utf8",
+      env: { ...process.env, ...environment },
+      timeout: 20_000,
+      windowsHide: true,
+      maxBuffer: 1024 * 1024,
+    },
+  );
+  if (result.status !== 0) {
+    throw new Error(`ACL helper failed: ${`${result.stderr ?? ""}${result.stdout ?? ""}`.trim()}`);
+  }
+  return result.stdout.trim();
+}
 
 function timeoutAfter(milliseconds, label) {
   return new Promise((_, reject) => {
@@ -183,4 +204,85 @@ export async function withLockedMember(source, destination, run) {
   if (callbackError !== null) throw callbackError;
   if (cleanupError !== null) throw cleanupError;
   return { value, cleanupState: "released" };
+}
+
+export async function withUnreadableEntry(target, readableSibling, run) {
+  const resolvedTarget = path.resolve(target);
+  const resolvedSibling = path.resolve(readableSibling);
+  const normalizedTarget = resolvedTarget.replaceAll("\\", "/");
+  const normalizedSibling = resolvedSibling.replaceAll("\\", "/");
+  if (!normalizedTarget.startsWith("D:/Ai/work together/.mssp-app2-acl-")
+      || !normalizedSibling.startsWith("D:/Ai/work together/.mssp-app2-acl-")
+      || typeof run !== "function" || !lstatSync(resolvedTarget).isFile()
+      || !lstatSync(resolvedSibling).isFile()) {
+    throw new TypeError("unreadable-entry paths or callback are invalid");
+  }
+  readFileSync(resolvedSibling);
+
+  const readSddl = [
+    "$ErrorActionPreference = 'Stop'",
+    "$sections = [System.Security.AccessControl.AccessControlSections]::Access",
+    "$acl = [System.IO.File]::GetAccessControl($env:MSSP_ACL_PATH, $sections)",
+    "[Console]::Out.Write($acl.GetSecurityDescriptorSddlForm($sections))",
+  ].join("\n");
+  const denyRead = [
+    "$ErrorActionPreference = 'Stop'",
+    "$sections = [System.Security.AccessControl.AccessControlSections]::Access",
+    "$acl = [System.IO.File]::GetAccessControl($env:MSSP_ACL_PATH, $sections)",
+    "$sid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User",
+    "$rule = [System.Security.AccessControl.FileSystemAccessRule]::new($sid, [System.Security.AccessControl.FileSystemRights]::Read, [System.Security.AccessControl.AccessControlType]::Deny)",
+    "$null = $acl.AddAccessRule($rule)",
+    "[System.IO.File]::SetAccessControl($env:MSSP_ACL_PATH, $acl)",
+    "$after = [System.IO.File]::GetAccessControl($env:MSSP_ACL_PATH, $sections)",
+    "[Console]::Out.Write($after.GetSecurityDescriptorSddlForm($sections))",
+  ].join("\n");
+  const restore = [
+    "$ErrorActionPreference = 'Stop'",
+    "$sections = [System.Security.AccessControl.AccessControlSections]::Access",
+    "$acl = [System.Security.AccessControl.FileSecurity]::new()",
+    "$acl.SetSecurityDescriptorSddlForm($env:MSSP_ACL_SDDL, $sections)",
+    "[System.IO.File]::SetAccessControl($env:MSSP_ACL_PATH, $acl)",
+    "$after = [System.IO.File]::GetAccessControl($env:MSSP_ACL_PATH, $sections)",
+    "[Console]::Out.Write($after.GetSecurityDescriptorSddlForm($sections))",
+  ].join("\n");
+
+  const aclBefore = runPowerShell(readSddl, { MSSP_ACL_PATH: resolvedTarget });
+  let value;
+  let callbackError = null;
+  let restoreError = null;
+  let aclDenied = null;
+  try {
+    aclDenied = runPowerShell(denyRead, { MSSP_ACL_PATH: resolvedTarget });
+    let controlReadErrorCode = null;
+    try { readFileSync(resolvedTarget); }
+    catch (error) { controlReadErrorCode = error.code ?? error.name; }
+    if (controlReadErrorCode === null) {
+      throw new Error("unreadable-entry precondition was not proven: direct read succeeded");
+    }
+    value = await run({
+      target: resolvedTarget,
+      readableSibling: resolvedSibling,
+      proof: {
+        preconditionState: "proven",
+        aclBeforeSha256: sha256Text(aclBefore),
+        aclDeniedSha256: sha256Text(aclDenied),
+        controlReadErrorCode,
+      },
+    });
+  } catch (error) {
+    callbackError = error;
+  } finally {
+    try {
+      const restored = runPowerShell(restore, {
+        MSSP_ACL_PATH: resolvedTarget,
+        MSSP_ACL_SDDL: aclBefore,
+      });
+      if (restored !== aclBefore) throw new Error("ACL restoration is not byte-identical SDDL");
+    } catch (error) {
+      restoreError = error;
+    }
+  }
+  if (restoreError !== null) throw restoreError;
+  if (callbackError !== null) throw callbackError;
+  return { value, cleanupState: "acl-restored" };
 }
