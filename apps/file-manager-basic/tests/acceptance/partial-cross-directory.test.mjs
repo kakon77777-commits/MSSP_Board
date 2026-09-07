@@ -1,16 +1,15 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { launchPackagedFixture, chooseRoot, performAndRead } from "./support/packaged-harness.mjs";
-import { withUnreadableEntry } from "./support/dynamic-subjects.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const manifest = JSON.parse(readFileSync(path.join(here, "fixtures", "fixture-manifest.json"), "utf8"));
 
-test("FM-COPY-PARTIAL can address nested sources and the root destination in one batch", async () => {
+test("an old cross-snapshot destination ID cannot bypass the pinned-destination route", async () => {
   const harness = await launchPackagedFixture(manifest);
   const { page, root } = harness;
   try {
@@ -27,27 +26,29 @@ test("FM-COPY-PARTIAL can address nested sources and the root destination in one
       (options) => options.map((option) => option.value),
     );
 
-    const result = await withUnreadableEntry(
-      path.join(root, "partial", "unreadable.bin"),
-      path.join(root, "partial", "ok.bin"),
-      () => page.evaluate(
-        ({ generation, items, destination }) =>
-          window.fileManager.copyEntries(generation, items, destination),
-        {
-          generation: snapshot.generation,
-          items: [
-            { ordinal: 0, submittedEntryId: okId },
-            { ordinal: 1, submittedEntryId: unreadableId },
-          ],
-          destination: destinationId,
-        },
-      ),
+    const result = await page.evaluate(
+      ({ generation, items, destination }) =>
+        window.fileManager.copyEntries(generation, items, destination),
+      {
+        generation: snapshot.generation,
+        items: [
+          { ordinal: 0, submittedEntryId: okId },
+          { ordinal: 1, submittedEntryId: unreadableId },
+        ],
+        destination: destinationId,
+      },
     );
 
-    assert.ok(optionValues.includes(destinationId),
-      `root destination is not expressible in the nested source snapshot GUI; result=${JSON.stringify(result.value)}`);
-    assert.equal(result.value.overallStatus, "partial");
-    assert.deepEqual(result.value.outcomes.map((outcome) => outcome.status), ["accepted", "failed"]);
+    assert.equal(optionValues.includes(destinationId), false);
+    assert.equal(result.overallStatus, "refused");
+    assert.deepEqual(result.outcomes.map((outcome) => outcome.status), ["refused", "refused"]);
+    assert.deepEqual(result.outcomes.map((outcome) => outcome.code), ["invalid_entry_id", "invalid_entry_id"]);
+    assert.equal(result.snapshot.state, "unchanged");
+    assert.equal(result.snapshot.snapshot.generation, 2);
+    assert.equal(existsSync(path.join(root, "dest-copy", "ok.bin")), false);
+    assert.equal(existsSync(path.join(root, "dest-copy", "unreadable.bin")), false);
+    assert.deepEqual(readFileSync(path.join(root, "partial", "ok.bin")), Buffer.from("deadbeef00112233", "hex"));
+    assert.deepEqual(readFileSync(path.join(root, "partial", "unreadable.bin")), Buffer.from("1122334455667788", "hex"));
   } finally {
     await harness.close();
   }

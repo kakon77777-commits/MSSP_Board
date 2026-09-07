@@ -66,6 +66,7 @@
     "independent_tree_byte_oracle": ["apps/file-manager-basic/tests/acceptance/tree-byte-oracle.test.mjs"],
     "dynamic_subject_controls": ["apps/file-manager-basic/tests/acceptance/dynamic-junction.test.mjs", "apps/file-manager-basic/tests/acceptance/dynamic-lock.test.mjs", "apps/file-manager-basic/tests/acceptance/dynamic-acl.test.mjs", "apps/file-manager-basic/tests/acceptance/dynamic-refresh.test.mjs"],
     "destination_io_boundary_split": ["apps/file-manager-basic/tests/acceptance/destination-toctou.test.mjs"],
+    "legacy_unpinned_destination_refusal": ["apps/file-manager-basic/tests/acceptance/partial-cross-directory.test.mjs"],
     "executable_comparator": ["comparators/file-manager-basic/operation-core.test.mjs"]
   },
   "native_artifacts": {

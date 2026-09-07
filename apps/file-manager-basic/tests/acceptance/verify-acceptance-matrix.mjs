@@ -70,7 +70,7 @@ if (matrix) {
         || matrix.sources.postscan_effective_sha256 !== "1F8022DC299B660FFC0DDA565D1951AAD6E804B2916C318E3924842D55372E2F"
         || postscan?.status !== "candidate_measured") fail("postscan effective gate");
   } else fail("postscan correction status");
-  if (!exactKeys(matrix.additional_gates, ["independent_tree_byte_oracle", "dynamic_subject_controls", "destination_io_boundary_split", "executable_comparator"])) fail("exact additional gates");
+  if (!exactKeys(matrix.additional_gates, ["independent_tree_byte_oracle", "dynamic_subject_controls", "destination_io_boundary_split", "legacy_unpinned_destination_refusal", "executable_comparator"])) fail("exact additional gates");
   for (const [gate, files] of Object.entries(matrix.additional_gates ?? {})) {
     if (!Array.isArray(files) || files.length === 0) fail(`${gate} files`);
     for (const relative of files ?? []) testFiles.add(relative);
