@@ -1,0 +1,81 @@
+{
+  "schema": "mssp.file-manager.acceptance-matrix/v1-candidate",
+  "sources": {
+    "preregistration_path": "slices/02-file-manager-basic/preregistration.json",
+    "preregistration_bytes": 54512,
+    "preregistration_sha256": "20CB3AD070242C5FE0C4047E05A59B2E05993F258B35A11B0032503997F13740",
+    "acceptance_catalog_sha256": "2110DBC609F4D6C030DE6650E02AE2BBFE8C6D87EFEB0B5AE8CE5D09A0A9802D",
+    "acceptance_resolver_sha256": "1E43555A524ABB5A3B958F165EE52753FC2B6D8F545DEFC9C3988A75562BD1EA",
+    "destination_effective_sha256": "023D64267F476ACBD61B8611468C8D6AB0CC6DA8EE529C5CED6B19669D065E2D",
+    "postscan_correction_sha256": "A74C5D392F520970991E174366778AB3DD7609A3E6C5F09514A352A95C6A4684",
+    "postscan_correction_status": "candidate_two_of_three",
+    "postscan_effective_path": null,
+    "postscan_effective_sha256": null
+  },
+  "policy": {
+    "entry_count": 40,
+    "default_exit_requires_no_governance_pending": true,
+    "whole_test_file_failure_is_conservatively_applied_to_every_linked_id": true,
+    "did_not_apply_is_not_pass": true
+  },
+  "entries": {
+    "FM-ROOT-SELECT": { "status": "candidate_measured", "evidence_label": "stubbed_gui", "test_files": ["apps/file-manager-basic/tests/acceptance/packaged-root-view-selection.test.mjs"] },
+    "FM-ROOT-CANCEL": { "status": "candidate_measured", "evidence_label": "stubbed_gui", "test_files": ["apps/file-manager-basic/tests/acceptance/root-transition-outcomes.test.mjs"] },
+    "FM-ROOT-FAIL": { "status": "candidate_measured", "evidence_label": "stubbed_gui_fault_injection", "test_files": ["apps/file-manager-basic/tests/acceptance/root-transition-outcomes.test.mjs"] },
+    "FM-ROOT-REFUSE": { "status": "candidate_measured", "evidence_label": "stubbed_gui", "test_files": ["apps/file-manager-basic/tests/acceptance/root-transition-outcomes.test.mjs"] },
+    "FM-ROOT-REPARSE": { "status": "candidate_measured", "evidence_label": "stubbed_gui_plus_native_junction", "test_files": ["apps/file-manager-basic/tests/acceptance/root-transition-outcomes.test.mjs"] },
+    "FM-VIEW-MANIFEST": { "status": "candidate_measured", "evidence_label": "stubbed_gui_plus_independent_oracle", "test_files": ["apps/file-manager-basic/tests/acceptance/packaged-root-view-selection.test.mjs"] },
+    "FM-VIEW-PARTIAL": { "status": "candidate_measured", "evidence_label": "stubbed_gui_plus_native_acl", "test_files": ["apps/file-manager-basic/tests/acceptance/packaged-policy-boundaries.test.mjs"] },
+    "FM-NAV-CHILD": { "status": "candidate_measured", "evidence_label": "stubbed_gui", "test_files": ["apps/file-manager-basic/tests/acceptance/packaged-root-view-selection.test.mjs"] },
+    "FM-NAV-PARENT": { "status": "candidate_measured", "evidence_label": "stubbed_gui", "test_files": ["apps/file-manager-basic/tests/acceptance/packaged-root-view-selection.test.mjs"] },
+    "FM-NAV-ESCAPE": { "status": "candidate_measured", "evidence_label": "stubbed_gui_plus_native_junction", "test_files": ["apps/file-manager-basic/tests/acceptance/packaged-policy-boundaries.test.mjs"] },
+    "FM-REFRESH-EXTERNAL": { "status": "candidate_measured", "evidence_label": "stubbed_gui_plus_external_filesystem", "test_files": ["apps/file-manager-basic/tests/acceptance/packaged-root-view-selection.test.mjs"] },
+    "FM-REFRESH-STALE": { "status": "candidate_measured", "evidence_label": "stubbed_gui_plus_external_filesystem", "test_files": ["apps/file-manager-basic/tests/acceptance/packaged-root-view-selection.test.mjs"] },
+    "FM-SELECT-SINGLE": { "status": "candidate_measured", "evidence_label": "stubbed_gui", "test_files": ["apps/file-manager-basic/tests/acceptance/packaged-root-view-selection.test.mjs"] },
+    "FM-SELECT-MULTI": { "status": "candidate_measured", "evidence_label": "stubbed_gui", "test_files": ["apps/file-manager-basic/tests/acceptance/packaged-root-view-selection.test.mjs"] },
+    "FM-SELECT-STALE": { "status": "candidate_measured", "evidence_label": "stubbed_gui", "test_files": ["apps/file-manager-basic/tests/acceptance/packaged-policy-boundaries.test.mjs"] },
+    "FM-CREATE-DIRECTORY": { "status": "candidate_measured", "evidence_label": "stubbed_gui_plus_native_filesystem", "test_files": ["apps/file-manager-basic/tests/acceptance/packaged-mutations.test.mjs"] },
+    "FM-CREATE-REFUSE": { "status": "candidate_measured", "evidence_label": "stubbed_gui", "test_files": ["apps/file-manager-basic/tests/acceptance/packaged-mutations.test.mjs"] },
+    "FM-RENAME": { "status": "candidate_measured", "evidence_label": "stubbed_gui_plus_independent_bytes", "test_files": ["apps/file-manager-basic/tests/acceptance/packaged-mutations.test.mjs"] },
+    "FM-RENAME-CONFLICT": { "status": "candidate_measured", "evidence_label": "stubbed_gui_plus_independent_bytes", "test_files": ["apps/file-manager-basic/tests/acceptance/packaged-mutations.test.mjs"] },
+    "FM-COPY-FILE": { "status": "candidate_measured", "evidence_label": "stubbed_gui_plus_independent_bytes", "test_files": ["apps/file-manager-basic/tests/acceptance/packaged-mutations.test.mjs"] },
+    "FM-COPY-DIRECTORY": { "status": "candidate_measured", "evidence_label": "stubbed_gui_plus_independent_tree", "test_files": ["apps/file-manager-basic/tests/acceptance/packaged-mutations.test.mjs"] },
+    "FM-COPY-PARTIAL": { "status": "candidate_measured", "evidence_label": "stubbed_gui_plus_native_acl", "test_files": ["apps/file-manager-basic/tests/acceptance/partial-destination-successor.test.mjs"] },
+    "FM-COPY-CONFLICT": { "status": "candidate_measured", "evidence_label": "stubbed_gui_plus_independent_bytes", "test_files": ["apps/file-manager-basic/tests/acceptance/packaged-mutations.test.mjs"] },
+    "FM-MOVE-FILE": { "status": "candidate_measured", "evidence_label": "stubbed_gui_plus_independent_bytes", "test_files": ["apps/file-manager-basic/tests/acceptance/packaged-mutations.test.mjs"] },
+    "FM-MOVE-DIRECTORY": { "status": "candidate_measured", "evidence_label": "stubbed_gui_plus_independent_tree", "test_files": ["apps/file-manager-basic/tests/acceptance/packaged-mutations.test.mjs"] },
+    "FM-MOVE-PARTIAL": { "status": "candidate_measured", "evidence_label": "stubbed_gui_plus_native_lock", "test_files": ["apps/file-manager-basic/tests/acceptance/partial-move-and-result-union.test.mjs"] },
+    "FM-MOVE-CONFLICT": { "status": "candidate_measured", "evidence_label": "stubbed_gui_plus_independent_bytes", "test_files": ["apps/file-manager-basic/tests/acceptance/packaged-mutations.test.mjs", "apps/file-manager-basic/tests/acceptance/packaged-policy-boundaries.test.mjs"] },
+    "FM-TRASH-FILE": { "status": "candidate_measured", "evidence_label": "stubbed_gui_plus_native_recycle", "test_files": ["apps/file-manager-basic/tests/acceptance/native-recycle.test.mjs"] },
+    "FM-TRASH-DIRECTORY": { "status": "candidate_measured", "evidence_label": "stubbed_gui_plus_native_recycle", "test_files": ["apps/file-manager-basic/tests/acceptance/native-recycle.test.mjs"] },
+    "FM-TRASH-REFUSE": { "status": "candidate_measured", "evidence_label": "stubbed_gui_plus_native_lock_and_junction", "test_files": ["apps/file-manager-basic/tests/acceptance/trash-failure.test.mjs", "apps/file-manager-basic/tests/acceptance/packaged-policy-boundaries.test.mjs"] },
+    "FM-SYS-RESULT-UNION": { "status": "candidate_measured", "evidence_label": "composite_gui", "test_files": ["apps/file-manager-basic/tests/acceptance/packaged-mutations.test.mjs", "apps/file-manager-basic/tests/acceptance/partial-destination-successor.test.mjs", "apps/file-manager-basic/tests/acceptance/partial-move-and-result-union.test.mjs"] },
+    "FM-SYS-SNAPSHOT-SEQUENCE": { "status": "candidate_measured", "evidence_label": "stubbed_gui_plus_external_filesystem", "test_files": ["apps/file-manager-basic/tests/acceptance/snapshot-sequence.test.mjs"] },
+    "FM-SYS-SNAPSHOT-UNAVAILABLE": { "status": "candidate_measured_pending_correction", "evidence_label": "stubbed_gui_fault_injection_plus_independent_bytes", "test_files": ["apps/file-manager-basic/tests/acceptance/post-operation-snapshot-unavailable.test.mjs"] },
+    "FM-SYS-ENTRY-ID-SCOPE": { "status": "candidate_measured", "evidence_label": "stubbed_gui_plus_external_filesystem", "test_files": ["apps/file-manager-basic/tests/acceptance/packaged-root-view-selection.test.mjs", "apps/file-manager-basic/tests/acceptance/packaged-policy-boundaries.test.mjs"] },
+    "FM-SYS-PATH-AUTHORITY": { "status": "candidate_measured", "evidence_label": "packaged_main_ipc_capture", "test_files": ["apps/file-manager-basic/tests/acceptance/ipc-path-authority.test.mjs", "apps/file-manager-basic/tests/acceptance/packaged-policy-boundaries.test.mjs"] },
+    "FM-SYS-REPARSE": { "status": "candidate_measured", "evidence_label": "stubbed_gui_plus_native_junction", "test_files": ["apps/file-manager-basic/tests/acceptance/root-transition-outcomes.test.mjs", "apps/file-manager-basic/tests/acceptance/packaged-policy-boundaries.test.mjs", "apps/file-manager-basic/tests/acceptance/destination-toctou.test.mjs"] },
+    "FM-SYS-NO-OVERWRITE": { "status": "candidate_measured", "evidence_label": "stubbed_gui_plus_independent_bytes", "test_files": ["apps/file-manager-basic/tests/acceptance/packaged-mutations.test.mjs", "apps/file-manager-basic/tests/acceptance/packaged-policy-boundaries.test.mjs"] },
+    "FM-SYS-ACTION-SHAPE": { "status": "candidate_measured", "evidence_label": "single_gui_dispatch_timed", "test_files": ["apps/file-manager-basic/tests/acceptance/packaged-mutations.test.mjs"] },
+    "FM-SYS-NO-PERMANENT-DELETE": { "status": "candidate_measured", "evidence_label": "native_recycle_metadata_and_payload", "test_files": ["apps/file-manager-basic/tests/acceptance/native-recycle.test.mjs", "apps/file-manager-basic/tests/acceptance/trash-failure.test.mjs"] },
+    "FM-SYS-RELAUNCH-RESELECT": { "status": "candidate_measured", "evidence_label": "two_packaged_processes_stubbed_picker", "test_files": ["apps/file-manager-basic/tests/acceptance/relaunch-reselect.test.mjs"] }
+  },
+  "additional_gates": {
+    "independent_tree_byte_oracle": ["apps/file-manager-basic/tests/acceptance/tree-byte-oracle.test.mjs"],
+    "dynamic_subject_controls": ["apps/file-manager-basic/tests/acceptance/dynamic-junction.test.mjs", "apps/file-manager-basic/tests/acceptance/dynamic-lock.test.mjs", "apps/file-manager-basic/tests/acceptance/dynamic-acl.test.mjs", "apps/file-manager-basic/tests/acceptance/dynamic-refresh.test.mjs"],
+    "destination_io_boundary_split": ["apps/file-manager-basic/tests/acceptance/destination-toctou.test.mjs"],
+    "executable_comparator": ["comparators/file-manager-basic/operation-core.test.mjs"]
+  },
+  "native_artifacts": {
+    "directory_picker": {
+      "status": "NotMeasured",
+      "harness": "apps/file-manager-basic/tests/acceptance/native-picker-artifact.mjs",
+      "reason": "Windows app UI automation surface unavailable on this host; stubbed behavior is not relabeled native"
+    },
+    "recycle": {
+      "status": "measured",
+      "harness": "apps/file-manager-basic/tests/acceptance/native-recycle.test.mjs",
+      "reason": "exact recycle metadata/payload pair observed and restored"
+    }
+  }
+}
