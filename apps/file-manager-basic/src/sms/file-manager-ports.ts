@@ -21,6 +21,9 @@ export interface FileStat {
 }
 
 export interface FilesystemPort {
+  join(parent: string, singleSegmentName: string): string;
+  parent(path: string): string;
+  same(left: string, right: string): boolean;
   lstat(path: string): Promise<FileStat>;
   readDirectory(path: string): Promise<string[]>;
   realpath(path: string): Promise<string>;
