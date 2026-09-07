@@ -1,0 +1,187 @@
+{
+  "schema": "mssp.file-manager.acceptance-fixture/v0",
+  "source": {
+    "preregistration_path": "slices/02-file-manager-basic/preregistration.json",
+    "preregistration_bytes": 54512,
+    "preregistration_sha256": "20CB3AD070242C5FE0C4047E05A59B2E05993F258B35A11B0032503997F13740"
+  },
+  "root_policy": {
+    "drive": "D:",
+    "fresh_per_run": true,
+    "user_folder_forbidden": true,
+    "follow_reparse_points": false
+  },
+  "entries": [
+    {
+      "path": "nav",
+      "kind": "directory"
+    },
+    {
+      "path": "nav/child.txt",
+      "kind": "file",
+      "bytes": 10,
+      "sha256": "0ab4d6b3580044ca2e49b168151a9a0b0ab74727116a70cee4436392ccac4554",
+      "payload_hex": "6e61762d6368696c640a"
+    },
+    {
+      "path": "copy-file.bin",
+      "kind": "file",
+      "bytes": 12,
+      "sha256": "de9889539d13ce918a1d0c52401c6f9e81165c15e9105ca1164a66514f3a3541",
+      "payload_hex": "000102037f80feff0a0d0055"
+    },
+    {
+      "path": "copy-dir",
+      "kind": "directory"
+    },
+    {
+      "path": "copy-dir/nested",
+      "kind": "directory"
+    },
+    {
+      "path": "copy-dir/nested/a.txt",
+      "kind": "file",
+      "bytes": 7,
+      "sha256": "02e50abb57af87e0d412b0716df5f63467043af15bfbbc4beb1a718879edfa40",
+      "payload_hex": "636f70792d610a"
+    },
+    {
+      "path": "copy-dir/nested/deeper",
+      "kind": "directory"
+    },
+    {
+      "path": "copy-dir/nested/deeper/b.bin",
+      "kind": "file",
+      "bytes": 16,
+      "sha256": "b8cc97e42589886e7f720eb36243e9a0bc756f355919eefcf0c3cab03476f7c0",
+      "payload_hex": "00ff102030405060708090a0b0c0d0e0"
+    },
+    {
+      "path": "copy-dir/empty",
+      "kind": "directory"
+    },
+    {
+      "path": "move-file.txt",
+      "kind": "file",
+      "bytes": 10,
+      "sha256": "4478f3d2e303a3e32398977ad9a9341d6990372e83f5f9575b869dfed07fd983",
+      "payload_hex": "6d6f76652d66696c650a"
+    },
+    {
+      "path": "move-dir",
+      "kind": "directory"
+    },
+    {
+      "path": "move-dir/nested.txt",
+      "kind": "file",
+      "bytes": 15,
+      "sha256": "c48c8a7e5ee3cf9b9b334317b0f0e08c15f30126edaa61baeba8aaeeabeea203",
+      "payload_hex": "6d6f76652d6469722d6368696c640a"
+    },
+    {
+      "path": "trash-file.txt",
+      "kind": "file",
+      "bytes": 11,
+      "sha256": "223ac4a81c7122a6af966aa9adb1df7c806cb495e47010e587c6cd75c4182114",
+      "payload_hex": "74726173682d66696c650a"
+    },
+    {
+      "path": "trash-dir",
+      "kind": "directory"
+    },
+    {
+      "path": "trash-dir/nested.txt",
+      "kind": "file",
+      "bytes": 16,
+      "sha256": "08fc11e57a3d07063128f62abb5cbd47d70c3002c8c56a6b900fea2af96467c8",
+      "payload_hex": "74726173682d6469722d6368696c640a"
+    },
+    {
+      "path": "partial",
+      "kind": "directory"
+    },
+    {
+      "path": "partial/ok.bin",
+      "kind": "file",
+      "bytes": 8,
+      "sha256": "a988e1e25ad1f6b00f91fb68e8eec8b68b8bfd6ff1f8eaca2f121d075a35bf78",
+      "payload_hex": "deadbeef00112233"
+    },
+    {
+      "path": "partial/locked.bin",
+      "kind": "file",
+      "bytes": 8,
+      "sha256": "f78d2b3f2e61b1f7ff5404b8e97589c3c7eb558fbd292900acd562aa58ebe9f8",
+      "payload_hex": "cafebabe44556677"
+    },
+    {
+      "path": "partial/unreadable.bin",
+      "kind": "file",
+      "bytes": 8,
+      "sha256": "1dce6604591efb439d5e87418a1d00dbfd014327d8c4dea862815714b76ae9a5",
+      "payload_hex": "1122334455667788"
+    },
+    {
+      "path": "partial/trash-locked.txt",
+      "kind": "file",
+      "bytes": 13,
+      "sha256": "379b4e2bb12025664f19bc048d76958619ce1a9ac3d5bb75277d047d5803b023",
+      "payload_hex": "74726173682d6c6f636b65640a"
+    },
+    {
+      "path": "refresh",
+      "kind": "directory"
+    },
+    {
+      "path": "refresh/base.txt",
+      "kind": "file",
+      "bytes": 5,
+      "sha256": "f34848ca92665c342abd5816c9e3eda0e82180671195362bcd0080544a3bc2ac",
+      "payload_hex": "626173650a"
+    },
+    {
+      "path": "rename-me.txt",
+      "kind": "file",
+      "bytes": 10,
+      "sha256": "24ce986fb2d2e07e06ffa556b4e6795071033ef13947e74e8f67aa701ca86905",
+      "payload_hex": "72656e616d652d6d650a"
+    },
+    {
+      "path": "rename-conflict.txt",
+      "kind": "file",
+      "bytes": 25,
+      "sha256": "e14a945071c78a2644d1c322efbaae45d2c3a2bc3ab54b47cec7bdb0fe6eb8f1",
+      "payload_hex": "72656e616d652d636f6e666c6963742d73656e74696e656c0a"
+    },
+    {
+      "path": "dest-copy",
+      "kind": "directory"
+    },
+    {
+      "path": "dest-copy-conflict",
+      "kind": "directory"
+    },
+    {
+      "path": "dest-copy-conflict/copy-file.bin",
+      "kind": "file",
+      "bytes": 8,
+      "sha256": "2ad51efbeb86a257738b956d44c5437d950639d52fa3ce239bc0d57857fb1907",
+      "payload_hex": "feedface99887766"
+    },
+    {
+      "path": "dest-move",
+      "kind": "directory"
+    },
+    {
+      "path": "dest-move-conflict",
+      "kind": "directory"
+    },
+    {
+      "path": "dest-move-conflict/move-file.txt",
+      "kind": "file",
+      "bytes": 23,
+      "sha256": "084ba1e7f32a05b2d961efa8b205d4efd20bb4d11d6a8b5fe81f27f1a6c85c01",
+      "payload_hex": "6d6f76652d636f6e666c6963742d73656e74696e656c0a"
+    }
+  ]
+}
