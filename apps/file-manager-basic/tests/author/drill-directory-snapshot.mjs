@@ -17,6 +17,7 @@ const attacks = [
   ["hide a reparse entry as its target kind", 'kind: stat.isReparse ? "reparse" : stat.kind,', 'kind: stat.kind,'],
   ["label unavailable read failure as observed", 'status: "failed",\n                code,', 'status: "observed",\n                code,'],
   ["omit destination projection from a new snapshot", 'destinationProjection: { state: "none" },', 'destinationProjection: undefined,'],
+  ["skip the bounded open-for-read probe", "await this.filesystem.probeReadableFile(subject);", "void subject;"],
 ];
 
 const control = run();

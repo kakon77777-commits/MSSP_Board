@@ -56,6 +56,7 @@ class FakeFilesystem {
   }
   async realpath(subject) { return subject; }
   async exists(subject) { return Boolean(this.stats[subject]); }
+  async probeReadableFile() {}
 }
 
 async function setup(pickerResults) {

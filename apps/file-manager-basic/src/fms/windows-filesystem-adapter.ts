@@ -36,6 +36,16 @@ export class WindowsFilesystemAdapter implements FilesystemPort {
     };
   }
 
+  async probeReadableFile(subject: string): Promise<void> {
+    const handle = await fs.open(subject, "r");
+    try {
+      // Opening the handle is the bounded readability observation. Do not read
+      // content or derive any expected bytes from the product.
+    } finally {
+      await handle.close();
+    }
+  }
+
   async readDirectory(subject: string): Promise<string[]> {
     return fs.readdir(subject);
   }

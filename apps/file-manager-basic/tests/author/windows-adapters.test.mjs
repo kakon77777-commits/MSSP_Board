@@ -31,6 +31,7 @@ test("filesystem adapter creates, observes, copies and moves exact subjects", as
     assert.deepEqual(await adapter.lstat(path.join(sourceDir, "a.bin")), {
       kind: "file", byteLength: 4, isReparse: false,
     });
+    await assert.doesNotReject(() => adapter.probeReadableFile(path.join(sourceDir, "a.bin")));
 
     const copied = path.join(root, "copied");
     await adapter.copy(sourceDir, copied);

@@ -49,6 +49,9 @@ export class DirectorySnapshotBuilder implements SnapshotPort {
       const subject = this.filesystem.join(input.directoryPath, name);
       try {
         const stat = await this.filesystem.lstat(subject);
+        if (!stat.isReparse && stat.kind === "file") {
+          await this.filesystem.probeReadableFile(subject);
+        }
         observed.push({
           name,
           canonicalPath: subject,
