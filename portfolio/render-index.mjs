@@ -174,8 +174,7 @@ export function renderReadme(index, records) {
       lines.push("```");
       lines.push("");
     }
-    lines.push(`席位：建置 ${record.owners.build} · manifest/oracle `
-      + `${record.owners.manifest_and_oracle} · 系統驗收 ${record.owners.system_acceptance}`);
+    lines.push(`席位：${record.owners.map((owner) => `${owner.role} ${owner.speaker}`).join(" · ")}`);
     lines.push("");
   }
   return lines.join("\n");

@@ -63,7 +63,7 @@ export const REPOSITORY_SNAPSHOT_EVIDENCE_FIELDS = Object.freeze(
 export const EVIDENCE_KINDS = Object.freeze(
   ["commit", "path", "external_digest", "repository_snapshot"]);
 export const CLOSE_FIELDS = Object.freeze(["commit", "tree", "date"]);
-export const OWNER_FIELDS = Object.freeze(["build", "manifest_and_oracle", "system_acceptance"]);
+export const OWNER_RECORD_FIELDS = Object.freeze(["role", "speaker"]);
 export const CLOSED_OWNER_LABELS = Object.freeze(["Elenchos", "Metron", "Pragma"]);
 export const MEASURED_FIELDS = Object.freeze([
   "tests", "test_failures", "drills", "drill_mutations_surviving",

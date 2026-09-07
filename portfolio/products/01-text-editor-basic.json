@@ -11,11 +11,11 @@
   "denominator_ref": "slices/01-text-editor-basic/preregistration.json",
   "app_path": "apps/text-editor-basic",
 
-  "owners": {
-    "build": "Elenchos",
-    "manifest_and_oracle": "Metron",
-    "system_acceptance": "Pragma"
-  },
+  "owners": [
+    { "role": "product_build", "speaker": "Elenchos" },
+    { "role": "manifest_and_oracle", "speaker": "Metron" },
+    { "role": "system_acceptance", "speaker": "Pragma" }
+  ],
 
   "note": "work_items is variable length and records what was actually done, not a fixed grid. Stage `state` and `applicability` are the only lifecycle facts stored; current_gate, the lifecycle projection and technical_close_eligible are DERIVED by lifecycle.mjs, because a stored copy can disagree with the stages it summarises. Every evidence_ref is typed and checked: a commit must be reachable, a repository path is bound to the exact commit where it existed, and external evidence carries bytes plus SHA-256.",
 

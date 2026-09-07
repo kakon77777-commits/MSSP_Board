@@ -82,4 +82,4 @@ tree    c636d10854dd6aeade5ad3131f527421bc8036ae
 結案    2026-08-30
 ```
 
-席位：建置 Elenchos · manifest/oracle Metron · 系統驗收 Pragma
+席位：product_build Elenchos · manifest_and_oracle Metron · system_acceptance Pragma

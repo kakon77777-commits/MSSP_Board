@@ -299,7 +299,7 @@ const cases = [
     file: recordPath,
     regenerate: true,
     applyJson(record) {
-      record.owners.system_acceptance = record.owners.build;
+      record.owners[2].speaker = record.owners[0].speaker;
       return true;
     },
   },

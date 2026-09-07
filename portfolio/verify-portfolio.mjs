@@ -26,7 +26,7 @@ import {
   EVIDENCE_KINDS, EXECUTION_ACCEPTANCE_FIELDS, EXECUTION_DRILL_FIELDS,
   EXECUTION_SNAPSHOT_FIELDS, EXECUTION_SNAPSHOT_SCHEMA, EXECUTION_TEST_FIELDS,
   EXECUTION_UNIT_FIELDS, EXTERNAL_EVIDENCE_FIELDS, INDEX_SCHEMA, MEASURED_FIELDS,
-  OWNER_FIELDS, PATH_EVIDENCE_FIELDS, PRODUCT_FIELDS, PRODUCT_SCHEMA,
+    OWNER_RECORD_FIELDS, PATH_EVIDENCE_FIELDS, PRODUCT_FIELDS, PRODUCT_SCHEMA,
   REPOSITORY_SNAPSHOT_EVIDENCE_FIELDS, ROADMAP_FIELDS,
   ROADMAP_POSITION_FIELDS, ROADMAP_SCHEMA, SELECTIONS,
   SELECTION_SNAPSHOT_FIELDS, SELECTION_SNAPSHOT_SCHEMA, STAGE_FIELDS,
@@ -602,11 +602,21 @@ for (const [position, { record, file }] of records) {
       fail(where, `${key} ${JSON.stringify(record[key])} does not exist`);
     }
   }
-  if (!isPlainObject(record.owners)) fail(where, "owners is not an object");
-  for (const key of unknownFields(record.owners, OWNER_FIELDS)) fail(where, `owners has unknown field ${key}`);
-  for (const key of missingFields(record.owners, OWNER_FIELDS)) fail(where, `owners is missing ${key}`);
-  for (const key of OWNER_FIELDS) {
-    if (!isNonEmptyString(record.owners?.[key])) fail(where, `owner ${key} is not a nonempty string`);
+  if (!Array.isArray(record.owners) || record.owners.length !== 3) {
+    fail(where, "owners must be exactly three role records");
+  }
+  const ownerRoles = new Set();
+  const ownerSpeakers = [];
+  for (const [position, owner] of (Array.isArray(record.owners) ? record.owners : []).entries()) {
+    const ownerWhere = `${where} owner ${position}`;
+    if (!isPlainObject(owner)) { fail(ownerWhere, "owner is not an object"); continue; }
+    for (const key of unknownFields(owner, OWNER_RECORD_FIELDS)) fail(ownerWhere, `unknown field ${key}`);
+    for (const key of missingFields(owner, OWNER_RECORD_FIELDS)) fail(ownerWhere, `missing field ${key}`);
+    if (!isNonEmptyString(owner.role)) fail(ownerWhere, "role is not a nonempty string");
+    if (!isNonEmptyString(owner.speaker)) fail(ownerWhere, "speaker is not a nonempty string");
+    if (ownerRoles.has(owner.role)) fail(ownerWhere, `duplicate owner role ${owner.role}`);
+    ownerRoles.add(owner.role);
+    ownerSpeakers.push(owner.speaker);
   }
 
   const workKeys = new Set();
@@ -765,8 +775,10 @@ for (const [position, { record, file }] of records) {
   }
   checkExecutionSnapshot(where, record);
   checkClosedSubjectFreshness(where, record);
-  const closedOwners = OWNER_FIELDS.map((key) => record.owners?.[key]);
-  if (new Set(closedOwners).size !== OWNER_FIELDS.length
+  const closedOwners = Array.isArray(record.owners)
+    ? record.owners.map((owner) => owner?.speaker)
+    : [];
+  if (new Set(closedOwners).size !== CLOSED_OWNER_LABELS.length
       || !CLOSED_OWNER_LABELS.every((label) => closedOwners.includes(label))) {
     fail(where, "closed product owners must be exactly Elenchos, Metron and Pragma, each once");
   }

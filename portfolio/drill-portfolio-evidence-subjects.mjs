@@ -48,11 +48,11 @@ function bindExecution(record, executionText) {
 const cases = [
   {
     name: "system-acceptance owner aliases build owner with trailing space",
-    mutate(record) { record.owners.system_acceptance = `${record.owners.build} `; },
+    mutate(record) { record.owners[2].speaker = `${record.owners[0].speaker} `; },
   },
   {
     name: "system-acceptance owner aliases build owner by case",
-    mutate(record) { record.owners.system_acceptance = record.owners.build.toLowerCase(); },
+    mutate(record) { record.owners[2].speaker = record.owners[0].speaker.toLowerCase(); },
   },
   {
     name: "execution snapshot and record invent one test",
