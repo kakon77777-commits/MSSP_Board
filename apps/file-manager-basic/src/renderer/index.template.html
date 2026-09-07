@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="{{CSP}}">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>File Manager Basic</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>File Manager Basic</h1>
+    <div class="toolbar">
+      <button id="choose-root" type="button">Choose root</button>
+      <button id="navigate-parent" type="button">Up</button>
+      <button id="refresh" type="button">Refresh</button>
+      <button id="create-directory" type="button">New folder</button>
+      <button id="rename-entry" type="button">Rename</button>
+      <button id="copy-entries" type="button">Copy</button>
+      <button id="move-entries" type="button">Move</button>
+      <button id="trash-entries" type="button">Recycle</button>
+    </div>
+  </header>
+  <main>
+    <dl class="status-grid">
+      <dt>Root</dt><dd id="root-label">No root selected</dd>
+      <dt>Generation</dt><dd id="generation">-</dd>
+      <dt>Completeness</dt><dd id="completeness">-</dd>
+      <dt>Selection</dt><dd id="selection">None</dd>
+      <dt>Operation</dt><dd id="operation-status">-</dd>
+      <dt>Snapshot</dt><dd id="snapshot-status">-</dd>
+      <dt>Evidence</dt><dd id="evidence-path">-</dd>
+      <dt>Error</dt><dd id="error-code">-</dd>
+    </dl>
+    <section aria-label="Directory entries">
+      <ul id="entries"></ul>
+    </section>
+  </main>
+  <script type="module" src="renderer.js"></script>
+</body>
+</html>

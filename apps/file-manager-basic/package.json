@@ -1,0 +1,18 @@
+{
+  "name": "file-manager-basic",
+  "version": "0.0.0",
+  "private": true,
+  "description": "MSSP product-scale trial, app 2. Preregistration: slices/02-file-manager-basic/preregistration.json",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/render-renderer.mjs",
+    "start": "electron .",
+    "test": "node --test tests/author/*.test.mjs",
+    "build:check": "node scripts/render-renderer.mjs --check"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "playwright": "^1.62.1",
+    "typescript": "^5.9.3"
+  }
+}
