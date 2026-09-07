@@ -34,6 +34,7 @@ export interface FilesystemPort {
   same(left: string, right: string): boolean;
   isWithin(root: string, candidate: string): boolean;
   lstat(path: string): Promise<FileStat>;
+  probeReadableFile(path: string): Promise<void>;
   readDirectory(path: string): Promise<string[]>;
   realpath(path: string): Promise<string>;
   exists(path: string): Promise<boolean>;

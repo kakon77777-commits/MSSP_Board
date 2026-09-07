@@ -23,6 +23,7 @@ class FakeFilesystem {
   constructor(entries, stats) {
     this.entries = entries;
     this.stats = stats;
+    this.readFailures = new Set();
   }
   async readDirectory(directory) {
     const value = this.entries[directory];
@@ -38,6 +39,9 @@ class FakeFilesystem {
   join(parent, name) { return `${parent}/${name}`; }
   parent(subject) { return subject.slice(0, subject.lastIndexOf("/")); }
   same(left, right) { return left === right; }
+  async probeReadableFile(subject) {
+    if (this.readFailures.has(subject)) throw new Error("read denied");
+  }
 }
 
 function input(overrides = {}) {
@@ -84,6 +88,23 @@ test("one entry observation failure produces partial rather than false-empty com
     "R/ok.bin": { kind: "file", byteLength: 8, isReparse: false },
     "R/unreadable.bin": new Error("access denied"),
   });
+  const builder = new DirectorySnapshotBuilder(filesystem, new EntryIdRegistry(() => crypto.randomUUID()));
+  const result = await builder.build(input({ generation: 2 }));
+  assert.equal(result.status, "observed");
+  assert.equal(result.snapshot.snapshot.completeness, "partial");
+  assert.deepEqual(result.snapshot.snapshot.entries.map((entry) => entry.name), ["ok.bin"]);
+  assert.deepEqual(result.snapshot.snapshot.observationErrors, [
+    { entryId: null, code: "entry_observation_failed" },
+  ]);
+});
+
+test("file whose metadata is visible but open-for-read is denied makes the view partial", async () => {
+  const { DirectorySnapshotBuilder, EntryIdRegistry } = await modules();
+  const filesystem = new FakeFilesystem({ R: ["ok.bin", "denied.bin"] }, {
+    "R/ok.bin": { kind: "file", byteLength: 8, isReparse: false },
+    "R/denied.bin": { kind: "file", byteLength: 9, isReparse: false },
+  });
+  filesystem.readFailures.add("R/denied.bin");
   const builder = new DirectorySnapshotBuilder(filesystem, new EntryIdRegistry(() => crypto.randomUUID()));
   const result = await builder.build(input({ generation: 2 }));
   assert.equal(result.status, "observed");
