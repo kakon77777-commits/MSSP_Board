@@ -70,6 +70,8 @@ test("pinned destination is reissued with nested source IDs and reaches partial 
 
     assert.equal(result.value.overallStatus, "partial");
     assert.deepEqual(result.value.outcomes.map((outcome) => outcome.status), ["accepted", "failed"]);
+    assert.equal(result.value.outcomes[1].code, "filesystem_operation_failed");
+    assert.deepEqual(result.value.outcomes.map((outcome) => outcome.ordinal), [0, 1]);
     assert.equal(result.value.snapshot.state, "current");
     assert.equal(existsSync(path.join(root, "dest-copy", "ok.bin")), true);
     assert.equal(existsSync(path.join(root, "dest-copy", "unreadable.bin")), false);

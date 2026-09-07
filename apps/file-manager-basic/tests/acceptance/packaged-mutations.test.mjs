@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -66,15 +66,24 @@ test("FM-CREATE-DIRECTORY creates one directory and refuses invalid names withou
     assert.equal(created.snapshot.state, "current");
     assert.equal(created.snapshot.snapshot.generation, 2);
     assert.equal(existsSync(path.join(root, "created-folder")), true);
+    assert.equal(lstatSync(path.join(root, "created-folder")).isDirectory(), true);
 
-    for (const invalidName of ["", "copy-file.bin", "CON", "bad:name", "bad/name"]) {
-      const refused = await setNameAndRun(page, "#create-directory", invalidName);
-      assert.equal(refused.status, "refused", invalidName);
-      assert.equal(refused.snapshot.state, "unchanged", invalidName);
-      assert.equal(refused.snapshot.snapshot.generation, 2, invalidName);
+    for (const { name, code } of [
+      { name: "", code: "invalid_name" },
+      { name: "copy-file.bin", code: "conflict" },
+      { name: "CON", code: "invalid_name" },
+      { name: "bad:name", code: "invalid_name" },
+      { name: "bad/name", code: "invalid_name" },
+    ]) {
+      const refused = await setNameAndRun(page, "#create-directory", name);
+      assert.equal(refused.status, "refused", name);
+      assert.equal(refused.code, code, name);
+      assert.equal(refused.snapshot.state, "unchanged", name);
+      assert.equal(refused.snapshot.snapshot.generation, 2, name);
     }
     const nul = await page.evaluate(() => window.fileManager.createDirectory(2, null, "bad\0name"));
     assert.equal(nul.status, "refused");
+    assert.equal(nul.code, "invalid_name");
     assert.equal(nul.snapshot.state, "unchanged");
     assert.equal(nul.snapshot.snapshot.generation, 2);
   } finally {
@@ -109,6 +118,7 @@ test("FM-RENAME preserves bytes and conflict/stale requests leave both sentinels
       await selectEntry(page, "rename-me.txt");
       const conflict = await setNameAndRun(page, "#rename-entry", "rename-conflict.txt");
       assert.equal(conflict.overallStatus, "refused");
+      assert.deepEqual(conflict.outcomes.map((outcome) => outcome.code), ["conflict"]);
       assert.equal(conflict.snapshot.state, "unchanged");
       assert.equal(conflict.snapshot.snapshot.generation, 1);
       assertPinnedFile(root, "rename-me.txt");
@@ -125,6 +135,7 @@ test("FM-RENAME preserves bytes and conflict/stale requests leave both sentinels
         { entryId: source.entryId },
       );
       assert.equal(stale.overallStatus, "refused");
+      assert.deepEqual(stale.outcomes.map((outcome) => outcome.code), ["stale_generation"]);
       assert.equal(stale.snapshot.state, "unchanged");
       assert.equal(stale.snapshot.snapshot.generation, 2);
       assertPinnedFile(root, "rename-me.txt");
@@ -162,6 +173,7 @@ for (const scenario of [
       const before = pinned.snapshot.snapshot.generation;
       const result = await runSelectedMutation(page, scenario.source, scenario.control);
       assert.equal(result.overallStatus, "accepted");
+      assert.deepEqual(result.outcomes.map((outcome) => outcome.status), ["accepted"]);
       assert.deepEqual(result.outcomes.map((outcome) => outcome.status), ["accepted"]);
       assert.equal(result.snapshot.state, "current");
       assert.equal(result.snapshot.snapshot.generation, before + 1);
@@ -253,6 +265,7 @@ for (const scenario of [
       const before = pinned.snapshot.snapshot.generation;
       const result = await runSelectedMutation(page, scenario.source, scenario.control);
       assert.equal(result.overallStatus, "refused");
+      assert.deepEqual(result.outcomes.map((outcome) => outcome.code), ["conflict"]);
       assert.equal(result.snapshot.state, "unchanged");
       assert.equal(result.snapshot.snapshot.generation, before);
       assertPinnedFile(root, scenario.source);
