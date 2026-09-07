@@ -1,0 +1,32 @@
+{
+  "schema": "mssp.portfolio-selection-snapshot/v0-experimental",
+  "note": "Repository-local, digest-bound snapshot of the selected portfolio identities. The external source remains separately identified by exact bytes and SHA-256; this snapshot carries no product work, capability, owner, status or acceptance claim.",
+  "source": {
+    "kind": "external_digest",
+    "ref": "MSSP_Architect_Exchange/acceptance/2026-08-30-pragma-portfolio-skeleton-candidates-review.md",
+    "bytes": 3991,
+    "sha256": "13ac4284effd8180f006fccdd26043508f29a7f3829b1b9667cc5a4f805e5f32"
+  },
+  "positions": [
+    { "position": "01", "slug": "text-editor-basic", "selection": "recovered" },
+    { "position": "02", "slug": "file-manager-basic", "selection": "recovered" },
+    { "position": "03", "slug": "markdown-editor", "selection": "recovered" },
+    { "position": "04", "slug": "spreadsheet", "selection": "recovered" },
+    { "position": "05", "slug": "git-client", "selection": "recovered" },
+    { "position": "06", "slug": "email-client", "selection": "recovered" },
+    { "position": "07", "slug": "etl-pipeline", "selection": "recovered" },
+    { "position": "08", "slug": "chart-dashboard", "selection": "recovered" },
+    { "position": "09", "slug": "rag-application", "selection": "recovered" },
+    { "position": "10", "slug": "evaluation-harness", "selection": "recovered" },
+    { "position": "11", "slug": "point-of-sale", "selection": "recovered" },
+    { "position": "12", "slug": "accounting-ledger", "selection": "recovered" },
+    { "position": "13", "slug": "booking-system", "selection": "recovered" },
+    { "position": "14", "slug": "inventory-manager", "selection": "recovered" },
+    { "position": "15", "slug": "password-manager", "selection": "recovered" },
+    { "position": "16", "slug": null, "selection": "unnamed_pending_bounded_review" },
+    { "position": "17", "slug": null, "selection": "unnamed_pending_bounded_review" },
+    { "position": "18", "slug": null, "selection": "unnamed_pending_bounded_review" },
+    { "position": "19", "slug": null, "selection": "unnamed_pending_bounded_review" },
+    { "position": "20", "slug": null, "selection": "unnamed_pending_bounded_review" }
+  ]
+}
