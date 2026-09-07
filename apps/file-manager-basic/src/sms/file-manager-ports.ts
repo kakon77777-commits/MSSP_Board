@@ -1,10 +1,16 @@
 import type {
+  DirectorySnapshot,
   DirectoryObservationResult,
   EntryId,
   EntryKind,
   EvidencePath,
+  SnapshotResult,
   SnapshotGeneration,
 } from "./file-manager-contract";
+
+export type NameValidationPort = (value: unknown) =>
+  | { ok: true; value: string }
+  | { ok: false; code: "invalid_name" | "invalid_argument" };
 
 export type RootPickerResult =
   | { state: "selected"; path: string; evidencePath: EvidencePath }
@@ -66,4 +72,16 @@ export interface SnapshotBuildInput {
 
 export interface SnapshotPort {
   build(input: SnapshotBuildInput): Promise<DirectoryObservationResult>;
+}
+
+export interface MutationContext {
+  rootPath: string;
+  directoryPath: string;
+  snapshot: DirectorySnapshot;
+  evidencePath: EvidencePath;
+}
+
+export interface MutationSessionPort {
+  mutationContext(): MutationContext | null;
+  publishAfterMutation(): Promise<SnapshotResult>;
 }

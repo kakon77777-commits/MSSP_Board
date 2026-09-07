@@ -13,6 +13,8 @@ import type {
   IdentityPort,
   RootPickerPort,
   SnapshotPort,
+  MutationContext,
+  MutationSessionPort,
 } from "../sms/file-manager-ports";
 
 export interface RootSessionControllerDependencies {
@@ -23,7 +25,7 @@ export interface RootSessionControllerDependencies {
   rootToken: () => string | undefined;
 }
 
-export class RootSessionController {
+export class RootSessionController implements MutationSessionPort {
   readonly #picker: RootPickerPort;
   readonly #filesystem: FilesystemPort;
   readonly #snapshots: SnapshotPort;
@@ -121,6 +123,41 @@ export class RootSessionController {
       snapshot: { state: "current", snapshot: this.#snapshot },
       evidencePath: this.#evidencePath,
     };
+  }
+
+  mutationContext(): MutationContext | null {
+    if (!this.#rootPath || !this.#directoryPath || !this.#snapshot) return null;
+    return {
+      rootPath: this.#rootPath,
+      directoryPath: this.#directoryPath,
+      snapshot: this.#snapshot,
+      evidencePath: this.#evidencePath,
+    };
+  }
+
+  async publishAfterMutation() {
+    if (!this.#rootPath || !this.#rootId || !this.#rootDisplayName || !this.#directoryPath) {
+      return {
+        state: "unavailable" as const,
+        snapshot: null,
+        lastPublishedGeneration: this.#lastGeneration,
+        code: "root_removed" as const,
+      };
+    }
+    const generation = this.#lastGeneration + 1;
+    const result = await this.#snapshots.build({
+      rootPath: this.#rootPath,
+      rootId: this.#rootId,
+      rootDisplayName: this.#rootDisplayName,
+      directoryPath: this.#directoryPath,
+      generation,
+      evidencePath: this.#evidencePath,
+    });
+    if (result.status === "failed") return result.snapshot;
+    this.#snapshot = result.snapshot.snapshot;
+    this.#lastGeneration = generation;
+    this.#selectedEntryIds = [];
+    return result.snapshot;
   }
 
   async refresh(): Promise<ViewCommandResult> {
