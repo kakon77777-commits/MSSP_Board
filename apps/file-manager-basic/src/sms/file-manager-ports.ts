@@ -23,7 +23,9 @@ export interface FileStat {
 export interface FilesystemPort {
   join(parent: string, singleSegmentName: string): string;
   parent(path: string): string;
+  baseName(path: string): string;
   same(left: string, right: string): boolean;
+  isWithin(root: string, candidate: string): boolean;
   lstat(path: string): Promise<FileStat>;
   readDirectory(path: string): Promise<string[]>;
   realpath(path: string): Promise<string>;
@@ -49,6 +51,7 @@ export interface IdentityPort {
   beginGeneration(generation: SnapshotGeneration): void;
   issue(canonicalPath: string, kind: EntryKind): EntryId;
   resolve(entryId: string, generation: SnapshotGeneration): IdentityResolution | null;
+  classify(entryId: string, generation: SnapshotGeneration): "current" | "cross_generation" | "unknown";
   currentGeneration(): SnapshotGeneration | null;
 }
 

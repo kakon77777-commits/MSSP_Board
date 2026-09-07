@@ -11,9 +11,19 @@ export class WindowsFilesystemAdapter implements FilesystemPort {
     return path.dirname(subject);
   }
 
+  baseName(subject: string): string {
+    return path.basename(subject);
+  }
+
   same(left: string, right: string): boolean {
     return path.resolve(left).toLocaleLowerCase("en-US")
       === path.resolve(right).toLocaleLowerCase("en-US");
+  }
+
+  isWithin(root: string, candidate: string): boolean {
+    const relative = path.relative(path.resolve(root), path.resolve(candidate));
+    return relative === "" || (relative !== ".." && !relative.startsWith(`..${path.sep}`)
+      && !path.isAbsolute(relative));
   }
 
   async lstat(subject: string): Promise<FileStat> {

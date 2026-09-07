@@ -8,6 +8,7 @@ export class EntryIdRegistry implements IdentityPort {
   #generation: SnapshotGeneration | null = null;
   readonly #byId = new Map<EntryId, IdentityResolution>();
   readonly #byPath = new Map<string, EntryId>();
+  readonly #historicalIds = new Set<EntryId>();
 
   constructor(tokenFactory: EntryIdTokenFactory) {
     this.#tokenFactory = tokenFactory;
@@ -17,6 +18,7 @@ export class EntryIdRegistry implements IdentityPort {
     if (!Number.isSafeInteger(generation) || generation < 1) {
       throw new TypeError("generation must be a positive safe integer");
     }
+    for (const entryId of this.#byId.keys()) this.#historicalIds.add(entryId);
     this.#generation = generation;
     this.#byId.clear();
     this.#byPath.clear();
@@ -33,7 +35,9 @@ export class EntryIdRegistry implements IdentityPort {
     const token = this.#tokenFactory();
     if (!token) throw new Error("entry id token factory returned no token");
     const entryId = `entry:${token}`;
-    if (this.#byId.has(entryId)) throw new Error("entry id token collision");
+    if (this.#byId.has(entryId) || this.#historicalIds.has(entryId)) {
+      throw new Error("entry id token collision");
+    }
     const resolution: IdentityResolution = {
       entryId,
       canonicalPath,
@@ -49,6 +53,12 @@ export class EntryIdRegistry implements IdentityPort {
     if (generation !== this.#generation) return null;
     const resolution = this.#byId.get(entryId);
     return resolution ? { ...resolution } : null;
+  }
+
+  classify(entryId: string, generation: SnapshotGeneration): "current" | "cross_generation" | "unknown" {
+    if (generation === this.#generation && this.#byId.has(entryId)) return "current";
+    if (this.#byId.has(entryId) || this.#historicalIds.has(entryId)) return "cross_generation";
+    return "unknown";
   }
 
   currentGeneration(): SnapshotGeneration | null {
