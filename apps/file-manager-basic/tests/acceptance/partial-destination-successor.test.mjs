@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, unlinkSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 import { chooseRoot, launchPackagedFixture, performAndRead } from "./support/packaged-harness.mjs";
 import { withUnreadableEntry } from "./support/dynamic-subjects.mjs";
+import { verifyTree } from "./support/tree-byte-oracle.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const manifest = JSON.parse(readFileSync(path.join(here, "fixtures", "fixture-manifest.json"), "utf8"));
@@ -76,6 +77,12 @@ test("pinned destination is reissued with nested source IDs and reaches partial 
       readFileSync(path.join(root, "dest-copy", "ok.bin")),
       readFileSync(path.join(root, "partial", "ok.bin")),
     );
+    unlinkSync(path.join(root, "dest-copy", "ok.bin"));
+    assert.deepEqual(verifyTree(root, manifest), {
+      status: "match",
+      checkedEntries: 30,
+      mismatches: [],
+    });
   } finally {
     await harness.close();
   }
