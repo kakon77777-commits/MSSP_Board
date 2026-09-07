@@ -199,6 +199,11 @@ export class RootSessionController implements MutationSessionPort {
     return this.#publish("navigate", target);
   }
 
+  refuseViewCommand(operation: "navigate" | "refresh", code: "invalid_argument"): ViewCommandResult {
+    if (!this.#snapshot) return this.#viewFailure(operation, "root_removed");
+    return this.#viewRefusal(operation, code);
+  }
+
   async setSelection(generation: number, items: SelectionRequestItem[]): Promise<SelectionResult> {
     if (!this.#snapshot) throw new Error("no root selected");
     if (generation !== this.#snapshot.generation) {
@@ -291,7 +296,7 @@ export class RootSessionController implements MutationSessionPort {
     return { operation, status: "accepted", snapshot: result.snapshot, evidencePath: this.#evidencePath };
   }
 
-  #viewRefusal(operation: "navigate" | "refresh", code: "stale_generation" | "invalid_entry_id" | "reparse_refused" | "path_rejected" | "navigate_above_root"): ViewCommandResult {
+  #viewRefusal(operation: "navigate" | "refresh", code: "invalid_argument" | "stale_generation" | "invalid_entry_id" | "reparse_refused" | "path_rejected" | "navigate_above_root"): ViewCommandResult {
     return {
       operation,
       status: "refused",

@@ -10,15 +10,6 @@ const source = path.join(app, "src", "renderer");
 const built = path.join(app, "dist", "renderer");
 const check = process.argv.includes("--check");
 
-async function render(target) {
-  fs.mkdirSync(target, { recursive: true });
-  const security = await import(`${pathToFileURL(path.join(app, "dist", "main", "security.js")).href}?t=${Date.now()}`);
-  const template = fs.readFileSync(path.join(source, "index.template.html"), "utf8");
-  fs.writeFileSync(path.join(target, "index.html"), template.replace("{{CSP}}", security.contentSecurityPolicy()), "utf8");
-  fs.copyFileSync(path.join(source, "styles.css"), path.join(target, "styles.css"));
-  fs.copyFileSync(path.join(app, "dist", "renderer", "renderer.js"), path.join(target, "renderer.js"));
-}
-
 if (!check) {
   // TypeScript already placed renderer.js in dist. Preserve it while rendering
   // the template and stylesheet around that exact artifact.
@@ -36,6 +27,10 @@ if (!check) {
       path.join(app, "node_modules", "typescript", "bin", "tsc"),
       "-p", "tsconfig.json", "--outDir", temporary,
     ], { cwd: app });
+    execFileSync(process.execPath, [
+      path.join(app, "node_modules", "typescript", "bin", "tsc"),
+      "-p", "tsconfig.dms.json", "--outDir", temporary,
+    ], { cwd: app });
     const tempRenderer = path.join(temporary, "renderer");
     const security = await import(`${pathToFileURL(path.join(temporary, "main", "security.js")).href}?t=${Date.now()}`);
     const template = fs.readFileSync(path.join(source, "index.template.html"), "utf8");
@@ -46,6 +41,9 @@ if (!check) {
       const actual = fs.readFileSync(path.join(built, name));
       if (!expected.equals(actual)) throw new Error(`stale built renderer: dist/renderer/${name}`);
     }
+    const expectedDms = fs.readFileSync(path.join(temporary, "dms", "file-manager-view.js"));
+    const actualDms = fs.readFileSync(path.join(app, "dist", "dms", "file-manager-view.js"));
+    if (!expectedDms.equals(actualDms)) throw new Error("stale built DMS: dist/dms/file-manager-view.js");
   } finally {
     fs.rmSync(temporary, { recursive: true, force: true });
   }
