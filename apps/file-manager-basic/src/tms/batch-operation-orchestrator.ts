@@ -211,8 +211,11 @@ export class BatchOperationOrchestrator {
       const target = targets[index];
       outcomes.push(await this.#executeOne(operation, item, resolution, context, async () => {
         const destinationStat = await this.#filesystem.lstat(destinationPath);
-        if (destinationStat.isReparse || destinationStat.kind !== "directory") {
+        if (destinationStat.isReparse || destinationStat.kind === "reparse") {
           throw Object.assign(new Error("destination changed"), { refusalCode: "reparse_refused" });
+        }
+        if (destinationStat.kind !== "directory") {
+          throw Object.assign(new Error("destination changed"), { refusalCode: "path_rejected" });
         }
         if (await this.#filesystem.exists(target)) {
           throw Object.assign(new Error("destination conflict"), { refusalCode: "conflict" });
