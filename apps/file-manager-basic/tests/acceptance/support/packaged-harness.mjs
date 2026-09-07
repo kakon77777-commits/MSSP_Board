@@ -42,6 +42,16 @@ export async function launchPackagedFixture(manifest, options = {}) {
       root,
       page,
       electronApp,
+      async closeApplication() {
+        if (electronApp !== null) {
+          const process = electronApp.process();
+          const pid = process.pid;
+          await electronApp.close();
+          electronApp = null;
+          return { pid, exitCode: process.exitCode };
+        }
+        return null;
+      },
       async close() {
         if (electronApp !== null) {
           await electronApp.close();
