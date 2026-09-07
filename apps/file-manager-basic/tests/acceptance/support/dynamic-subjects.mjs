@@ -292,7 +292,7 @@ export async function withUnreadableEntry(target, readableSibling, run) {
 export async function withRefreshChange(root, manifest, run) {
   const resolvedRoot = path.resolve(root);
   const normalized = resolvedRoot.replaceAll("\\", "/");
-  if (!normalized.startsWith("D:/Ai/work together/.mssp-app2-refresh-")
+  if (!/^D:\/Ai\/work together\/\.mssp-app2-(?:refresh|gui)-/.test(normalized)
       || typeof run !== "function" || !Array.isArray(manifest?.entries)) {
     throw new TypeError("refresh-change root, manifest or callback is invalid");
   }
