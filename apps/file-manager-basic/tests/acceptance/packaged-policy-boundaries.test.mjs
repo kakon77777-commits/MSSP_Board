@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
@@ -140,6 +140,71 @@ test("FM-NAV-ESCAPE and reparse mutation use distinct typed refusals without tra
       return { targetPath };
     });
     assert.equal(observed.cleanupState, "restored");
+  } finally {
+    await harness.close();
+  }
+});
+
+test("FM-MOVE-CONFLICT refuses a stale projected destination identity", async () => {
+  const harness = await launchPackagedFixture(manifest);
+  const { page, root } = harness;
+  try {
+    await chooseRoot(page);
+    await page.locator("#pin-target").selectOption({ label: "dest-move" });
+    const pinned = await performAndRead(page, () => page.locator("#set-destination").click());
+    const staleDestination = pinned.snapshot.snapshot.destinationProjection.entryId;
+    assert.equal(pinned.snapshot.snapshot.generation, 2);
+
+    const refreshed = await performAndRead(page, () => page.locator("#refresh").click());
+    assert.equal(refreshed.snapshot.snapshot.generation, 3);
+    assert.notEqual(refreshed.snapshot.snapshot.destinationProjection.entryId, staleDestination);
+    const source = refreshed.snapshot.snapshot.entries.find((entry) => entry.name === "move-file.txt");
+    const result = await page.evaluate(
+      ({ generation, entryId, destinationDirectoryId }) => window.fileManager.moveEntries(
+        generation,
+        [{ ordinal: 0, submittedEntryId: entryId }],
+        destinationDirectoryId,
+      ),
+      { generation: 3, entryId: source.entryId, destinationDirectoryId: staleDestination },
+    );
+    assert.equal(result.overallStatus, "refused");
+    assert.deepEqual(result.outcomes.map((outcome) => outcome.code), ["invalid_entry_id"]);
+    assert.equal(result.snapshot.state, "unchanged");
+    assert.equal(result.snapshot.snapshot.generation, 3);
+    assert.equal(existsSync(path.join(root, "move-file.txt")), true);
+    assert.equal(existsSync(path.join(root, "dest-move", "move-file.txt")), false);
+  } finally {
+    await harness.close();
+  }
+});
+
+test("FM-TRASH-REFUSE rejects stale and unknown identities without mutation", async () => {
+  const harness = await launchPackagedFixture(manifest);
+  const { page, root } = harness;
+  try {
+    const selected = await chooseRoot(page);
+    const old = selected.snapshot.entries.find((entry) => entry.name === "trash-file.txt");
+    const refreshed = await performAndRead(page, () => page.locator("#refresh").click());
+    assert.equal(refreshed.snapshot.snapshot.generation, 2);
+
+    const stale = await page.evaluate(
+      ({ entryId }) => window.fileManager.trashEntries(1, [{ ordinal: 0, submittedEntryId: entryId }]),
+      { entryId: old.entryId },
+    );
+    assert.equal(stale.overallStatus, "refused");
+    assert.deepEqual(stale.outcomes.map((outcome) => outcome.code), ["stale_generation"]);
+    assert.equal(stale.snapshot.state, "unchanged");
+    assert.equal(stale.snapshot.snapshot.generation, 2);
+
+    const unknown = await page.evaluate(() => window.fileManager.trashEntries(
+      2,
+      [{ ordinal: 0, submittedEntryId: "entry:outside-root" }],
+    ));
+    assert.equal(unknown.overallStatus, "refused");
+    assert.deepEqual(unknown.outcomes.map((outcome) => outcome.code), ["invalid_entry_id"]);
+    assert.equal(unknown.snapshot.state, "unchanged");
+    assert.equal(unknown.snapshot.snapshot.generation, 2);
+    assert.equal(existsSync(path.join(root, "trash-file.txt")), true);
   } finally {
     await harness.close();
   }
