@@ -139,6 +139,64 @@ export function withEscapeJunction(root, runId, run) {
   return { value, cleanupState: "restored" };
 }
 
+export async function withEscapeJunctionAsync(root, runId, run) {
+  const resolvedRoot = path.resolve(root);
+  if (path.parse(resolvedRoot).root.toUpperCase() !== "D:\\"
+      || !lstatSync(resolvedRoot).isDirectory()
+      || lstatSync(resolvedRoot).isSymbolicLink()) {
+    throw new TypeError("junction fixture root must be an ordinary D-drive directory");
+  }
+  if (!/^[0-9a-f-]{36}$/i.test(runId) || typeof run !== "function") {
+    throw new TypeError("junction subject requires a UUID run id and callback");
+  }
+  assertWithin(allowedParent, resolvedRoot, "fixture root");
+
+  const linkPath = path.join(resolvedRoot, "escape-junction");
+  const targetPath = path.join(allowedParent, `escape-target-${runId}`);
+  assertWithin(resolvedRoot, linkPath, "junction link");
+  assertWithin(allowedParent, targetPath, "junction target");
+  if (existsSync(linkPath) || existsSync(targetPath)) {
+    throw new Error("junction subject paths must not pre-exist");
+  }
+
+  let targetCreated = false;
+  let linkCreated = false;
+  let value;
+  let callbackError = null;
+  let cleanupError = null;
+  try {
+    mkdirSync(targetPath, { recursive: false });
+    targetCreated = true;
+    symlinkSync(targetPath, linkPath, "junction");
+    linkCreated = true;
+
+    const canonicalRoot = realpathSync(resolvedRoot);
+    const canonicalTarget = realpathSync(targetPath);
+    const proof = {
+      preconditionState: "proven",
+      kind: lstatSync(linkPath).isSymbolicLink() ? "reparse" : "ordinary",
+      targetOutsideRoot: !canonicalTarget.startsWith(`${canonicalRoot}${path.sep}`),
+      canonicalTarget,
+    };
+    if (proof.kind !== "reparse" || proof.targetOutsideRoot !== true) {
+      throw new Error("junction subject precondition was not proven");
+    }
+    value = await run({ linkPath, targetPath, proof });
+  } catch (error) {
+    callbackError = error;
+  } finally {
+    try {
+      if (linkCreated && existsSync(linkPath)) rmSync(linkPath, { force: true });
+      if (targetCreated && existsSync(targetPath)) rmdirSync(targetPath);
+    } catch (error) {
+      cleanupError = error;
+    }
+  }
+  if (cleanupError !== null) throw cleanupError;
+  if (callbackError !== null) throw callbackError;
+  return { value, cleanupState: "restored" };
+}
+
 export async function withLockedMember(source, destination, run) {
   const resolvedSource = path.resolve(source);
   const resolvedDestination = path.resolve(destination);

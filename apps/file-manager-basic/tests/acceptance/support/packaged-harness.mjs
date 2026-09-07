@@ -18,6 +18,16 @@ export async function launchPackagedFixture(manifest, options = {}) {
     ...process.env,
     MSSP_FM_STUB_ROOT: stubRoot,
   };
+  if (options.rootSequence !== undefined) {
+    const sequence = typeof options.rootSequence === "function"
+      ? options.rootSequence(root)
+      : options.rootSequence;
+    if (!Array.isArray(sequence)
+        || sequence.some((entry) => entry !== null && typeof entry !== "string")) {
+      throw new TypeError("rootSequence must contain only paths or null cancellation markers");
+    }
+    env.MSSP_FM_STUB_ROOT_SEQUENCE = JSON.stringify(sequence);
+  }
   if (options.failScanAt !== undefined) env.MSSP_FM_FAIL_SCAN_AT = String(options.failScanAt);
 
   let electronApp = null;
