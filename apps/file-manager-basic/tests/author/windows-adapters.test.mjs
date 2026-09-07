@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
+import { once } from "node:events";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -117,4 +119,47 @@ test("recycle adapter calls only its injected recoverable operation", async () =
   const source = await fs.readFile(path.join(app, "src", "fms", "windows-recycle-adapter.ts"), "utf8");
   assert.doesNotMatch(source, /\b(?:rm|rmSync|unlink|unlinkSync|exec|spawn)\b/,
     "recycle adapter contains a permanent-delete or shell fallback");
+});
+
+test("readability probe rejects a real Windows sharing denial and releases the helper", async () => {
+  const { WindowsFilesystemAdapter } = await load("windows-filesystem-adapter.js");
+  const adapter = new WindowsFilesystemAdapter();
+  const root = await scratch();
+  const subject = path.join(root, "denied.bin");
+  await fs.writeFile(subject, Buffer.from("denied"));
+  const script = [
+    "$ErrorActionPreference = 'Stop'",
+    "$s = [System.IO.File]::Open($env:MSSP_DENIED_FILE, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::None)",
+    "[Console]::Out.WriteLine($PID)",
+    "[Console]::Out.Flush()",
+    "[Console]::In.ReadLine() | Out-Null",
+    "$s.Dispose()",
+  ].join("\n");
+  const child = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script], {
+    env: { ...process.env, MSSP_DENIED_FILE: subject },
+    stdio: ["pipe", "pipe", "pipe"],
+    windowsHide: true,
+  });
+  try {
+    const ready = await new Promise((resolve, reject) => {
+      let text = "";
+      const timer = setTimeout(() => reject(new Error("denied-file helper timeout")), 5_000);
+      child.stdout.setEncoding("utf8");
+      child.stdout.on("data", (chunk) => {
+        text += chunk;
+        if (text.includes("\n")) { clearTimeout(timer); resolve(text.trim()); }
+      });
+      child.once("error", reject);
+      child.once("exit", (code) => reject(new Error(`denied-file helper exited early: ${code}`)));
+    });
+    assert.equal(Number.isInteger(Number(ready)), true, "helper did not report its exact PID");
+    let deniedCode = null;
+    try { await adapter.probeReadableFile(subject); }
+    catch (error) { deniedCode = error.code ?? error.name; }
+    assert.ok(["EBUSY", "EPERM", "EACCES"].includes(deniedCode),
+      `open-for-read denial was not proven: ${deniedCode}`);
+  } finally {
+    if (child.exitCode === null) { child.stdin.write("\n"); child.stdin.end(); await once(child, "exit"); }
+    await fs.rm(root, { recursive: true, force: true });
+  }
 });

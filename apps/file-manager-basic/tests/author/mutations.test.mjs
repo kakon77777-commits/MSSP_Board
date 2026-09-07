@@ -25,6 +25,8 @@ class FakeFilesystem {
     ]);
     this.calls = [];
     this.fail = new Set();
+    this.lstatCounts = new Map();
+    this.destinationSwapKind = null;
   }
   join(parent, name) { return `${parent}/${name}`; }
   parent(subject) { return subject.slice(0, subject.lastIndexOf("/")); }
@@ -34,6 +36,13 @@ class FakeFilesystem {
   async realpath(subject) { return subject; }
   async exists(subject) { return this.subjects.has(subject); }
   async lstat(subject) {
+    const count = (this.lstatCounts.get(subject) ?? 0) + 1;
+    this.lstatCounts.set(subject, count);
+    if (subject === "R/dest" && count === 2 && this.destinationSwapKind) {
+      this.subjects.set(subject, this.destinationSwapKind === "reparse"
+        ? { kind: "reparse", byteLength: null, isReparse: true }
+        : { kind: "file", byteLength: 1, isReparse: false });
+    }
     const value = this.subjects.get(subject);
     if (!value) throw Object.assign(new Error("missing"), { code: "ENOENT" });
     return { ...value };
@@ -239,4 +248,21 @@ test("current-generation cursors or hidden handles do not become mutation author
     { ordinal: 0, submittedEntryId: pinnedDestinationId },
   ]);
   assert.equal(destinationAsSource.overallStatus, "refused");
+});
+
+test("I/O-boundary destination recheck distinguishes reparse from plain-file replacement", async () => {
+  for (const [replacement, expectedCode] of [
+    ["reparse", "reparse_refused"],
+    ["file", "path_rejected"],
+  ]) {
+    const { orchestrator, filesystem, pinnedDestinationId, item } = await setup();
+    filesystem.destinationSwapKind = replacement;
+    const result = await orchestrator.copy(1, [item("R/a.txt")], pinnedDestinationId);
+    assert.equal(result.overallStatus, "refused", replacement);
+    assert.equal(result.outcomes[0].code, expectedCode, replacement);
+    assert.equal(result.snapshot.state, "unchanged");
+    assert.equal(filesystem.calls.length, 0);
+    assert.equal(filesystem.lstatCounts.get("R/dest"), 2,
+      "test did not reach the execution-time destination recheck");
+  }
 });

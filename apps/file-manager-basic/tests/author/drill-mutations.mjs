@@ -36,6 +36,7 @@ const attacks = [
     ]],
   ],
   ["allow create under a non-current directory cursor", 'if (parentEntryId !== context.snapshot.directoryId)', "if (false)"],
+  ["collapse plain-file destination replacement into reparse refusal", '{ refusalCode: "path_rejected" }', '{ refusalCode: "reparse_refused" }'],
 ];
 
 const control = run();
