@@ -85,3 +85,24 @@ export async function selectEntry(page, name) {
   const row = page.locator(`#entries li[data-name=${JSON.stringify(name)}]`);
   return performAndRead(page, () => row.locator("input.entry-select").check());
 }
+
+export async function installIpcCapture(electronApp) {
+  await electronApp.evaluate(({ ipcMain }) => {
+    const handlers = ipcMain._invokeHandlers;
+    if (!(handlers instanceof Map)) throw new Error("Electron invoke-handler map is unavailable");
+    globalThis.__msspAcceptanceIpcCapture = [];
+    for (const [channel, handler] of handlers) {
+      handlers.set(channel, async (event, ...args) => {
+        globalThis.__msspAcceptanceIpcCapture.push({
+          channel,
+          args: JSON.parse(JSON.stringify(args)),
+        });
+        return handler(event, ...args);
+      });
+    }
+  });
+}
+
+export async function readIpcCapture(electronApp) {
+  return electronApp.evaluate(() => globalThis.__msspAcceptanceIpcCapture ?? null);
+}
