@@ -202,8 +202,8 @@ export async function withLockedMember(source, destination, run) {
   const resolvedDestination = path.resolve(destination);
   const normalizedSource = resolvedSource.replaceAll("\\", "/");
   const normalizedDestination = resolvedDestination.replaceAll("\\", "/");
-  if (!normalizedSource.startsWith("D:/Ai/work together/.mssp-app2-lock-")
-      || !normalizedDestination.startsWith("D:/Ai/work together/.mssp-app2-lock-")
+  if (!/^D:\/Ai\/work together\/\.mssp-app2-(?:lock|gui)-/.test(normalizedSource)
+      || !/^D:\/Ai\/work together\/\.mssp-app2-(?:lock|gui)-/.test(normalizedDestination)
       || typeof run !== "function" || !lstatSync(resolvedSource).isFile()
       || existsSync(resolvedDestination)) {
     throw new TypeError("locked-member paths or callback are invalid");
