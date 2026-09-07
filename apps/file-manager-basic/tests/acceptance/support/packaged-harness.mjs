@@ -1,0 +1,67 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+import { materializeFixture } from "./materialize-fixture.mjs";
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const app = path.resolve(here, "..", "..", "..");
+const scratchPrefix = "D:/Ai/work together/.mssp-app2-gui-";
+
+export async function launchPackagedFixture(manifest, options = {}) {
+  const root = mkdtempSync(scratchPrefix);
+  materializeFixture(root, manifest);
+  const stubRoot = typeof options.stubRoot === "function"
+    ? options.stubRoot(root)
+    : options.stubRoot ?? root;
+  const env = {
+    ...process.env,
+    MSSP_FM_STUB_ROOT: stubRoot,
+  };
+  if (options.failScanAt !== undefined) env.MSSP_FM_FAIL_SCAN_AT = String(options.failScanAt);
+
+  let electronApp = null;
+  try {
+    const { _electron } = await import("playwright");
+    electronApp = await _electron.launch({ args: ["."], cwd: app, env });
+    const page = await electronApp.firstWindow();
+    page.setDefaultTimeout(10_000);
+    await page.waitForLoadState("domcontentloaded");
+    return {
+      app,
+      root,
+      page,
+      electronApp,
+      async close() {
+        if (electronApp !== null) {
+          await electronApp.close();
+          electronApp = null;
+        }
+        const resolved = path.resolve(root).replaceAll("\\", "/");
+        if (!resolved.startsWith(scratchPrefix)) throw new Error("refusing unsafe GUI fixture cleanup");
+        rmSync(root, { recursive: true, force: true });
+      },
+    };
+  } catch (error) {
+    if (electronApp !== null) await electronApp.close().catch(() => {});
+    const resolved = path.resolve(root).replaceAll("\\", "/");
+    if (resolved.startsWith(scratchPrefix)) rmSync(root, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+export async function performAndRead(page, action) {
+  await page.evaluate(() => { window.__lastFileManagerResult = undefined; });
+  await action();
+  await page.waitForFunction(() => window.__lastFileManagerResult !== undefined);
+  return page.evaluate(() => window.__lastFileManagerResult);
+}
+
+export async function chooseRoot(page) {
+  return performAndRead(page, () => page.locator("#choose-root").click());
+}
+
+export async function selectEntry(page, name) {
+  const row = page.locator(`#entries li[data-name=${JSON.stringify(name)}]`);
+  return performAndRead(page, () => row.locator("input.entry-select").check());
+}
