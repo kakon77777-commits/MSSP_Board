@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
-import { existsSync, lstatSync, readFileSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -178,6 +178,7 @@ for (const scenario of [
       assert.equal(result.snapshot.state, "current");
       assert.equal(result.snapshot.snapshot.generation, before + 1);
       assertPinnedFile(root, scenario.expected, scenario.source);
+      assert.deepEqual(readdirSync(path.join(root, scenario.destination)), [path.basename(scenario.expected)]);
       assert.equal(existsSync(path.join(root, scenario.source)), scenario.sourceRemains);
       if (scenario.sourceRemains) assertPinnedFile(root, scenario.source);
     } finally {
@@ -199,6 +200,12 @@ for (const scenario of [
       "nested/deeper/b.bin",
     ],
     expectedDirectories: ["empty", "nested", "nested/deeper"],
+    expectedListings: {
+      "": ["empty", "nested"],
+      "empty": [],
+      "nested": ["a.txt", "deeper"],
+      "nested/deeper": ["b.bin"],
+    },
   },
   {
     id: "FM-MOVE-DIRECTORY",
@@ -209,6 +216,7 @@ for (const scenario of [
     leavesSource: false,
     expectedFiles: ["nested.txt"],
     expectedDirectories: [],
+    expectedListings: { "": ["nested.txt"] },
   },
 ]) {
   test(`${scenario.id} transfers the exact nested tree in one GUI command`, async () => {
@@ -232,6 +240,12 @@ for (const scenario of [
         const sourcePath = `${scenario.source}/${relative}`;
         assertPinnedFile(root, `${scenario.expectedRoot}/${relative}`, sourcePath);
         if (scenario.leavesSource) assertPinnedFile(root, sourcePath);
+      }
+      for (const [relative, names] of Object.entries(scenario.expectedListings)) {
+        const directory = relative === ""
+          ? path.join(root, scenario.expectedRoot)
+          : path.join(root, scenario.expectedRoot, ...relative.split("/"));
+        assert.deepEqual(readdirSync(directory).sort((left, right) => left.localeCompare(right)), names);
       }
       assert.equal(existsSync(path.join(root, scenario.source)), scenario.leavesSource);
     } finally {

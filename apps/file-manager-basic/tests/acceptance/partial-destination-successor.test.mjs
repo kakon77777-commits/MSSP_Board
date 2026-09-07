@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, unlinkSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, unlinkSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -75,6 +75,7 @@ test("pinned destination is reissued with nested source IDs and reaches partial 
     assert.equal(result.value.snapshot.state, "current");
     assert.equal(existsSync(path.join(root, "dest-copy", "ok.bin")), true);
     assert.equal(existsSync(path.join(root, "dest-copy", "unreadable.bin")), false);
+    assert.deepEqual(readdirSync(path.join(root, "dest-copy")), ["ok.bin"]);
     assert.deepEqual(
       readFileSync(path.join(root, "dest-copy", "ok.bin")),
       readFileSync(path.join(root, "partial", "ok.bin")),

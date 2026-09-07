@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -63,6 +63,7 @@ test("FM-MOVE-PARTIAL distinguishes one locked failure from a mixed partial batc
     assert.equal(measured.cleanupState, "released");
     assert.equal(existsSync(path.join(root, "partial", "ok.bin")), false);
     assert.equal(existsSync(path.join(root, "dest-move", "ok.bin")), true);
+    assert.deepEqual(readdirSync(path.join(root, "dest-move")), ["ok.bin"]);
     assert.deepEqual(
       readFileSync(path.join(root, "dest-move", "ok.bin")),
       Buffer.from("deadbeef00112233", "hex"),

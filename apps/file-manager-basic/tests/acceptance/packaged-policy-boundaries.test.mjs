@@ -91,6 +91,10 @@ test("FM-VIEW-PARTIAL reports a proven unreadable member instead of a false comp
     assert.equal(observed.value.snapshot.snapshot.completeness, "partial");
     assert.deepEqual(observed.value.snapshot.snapshot.observationErrors,
       [{ entryId: null, code: "entry_observation_failed" }]);
+    assert.deepEqual(
+      observed.value.snapshot.snapshot.entries.map((entry) => entry.name),
+      ["locked.bin", "ok.bin", "trash-locked.txt"],
+    );
     assert.equal(await page.locator("#completeness").textContent(), "partial");
   } finally {
     await harness.close();
