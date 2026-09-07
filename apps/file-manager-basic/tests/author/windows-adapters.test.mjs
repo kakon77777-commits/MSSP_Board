@@ -87,6 +87,26 @@ test("root picker stub labels selected and cancelled paths without native overcl
   assert.deepEqual(await cancelled.chooseRoot(), { state: "cancelled", evidencePath: "stubbed" });
 });
 
+test("root picker sequence consumes exact paths and cancellation once, then fails closed", async () => {
+  const { WindowsRootPickerAdapter } = await load("windows-root-picker-adapter.js");
+  const picker = new WindowsRootPickerAdapter({
+    stubSequence: ["D:\\scratch\\root-a", null, "D:\\scratch\\root-b"],
+  });
+  assert.deepEqual(await picker.chooseRoot(), {
+    state: "selected", path: "D:\\scratch\\root-a", evidencePath: "stubbed",
+  });
+  assert.deepEqual(await picker.chooseRoot(), { state: "cancelled", evidencePath: "stubbed" });
+  assert.deepEqual(await picker.chooseRoot(), {
+    state: "selected", path: "D:\\scratch\\root-b", evidencePath: "stubbed",
+  });
+  await assert.rejects(() => picker.chooseRoot(), /exhausted/i);
+  assert.throws(() => new WindowsRootPickerAdapter({ stubSequence: [] }), /non-empty/i);
+  assert.throws(() => new WindowsRootPickerAdapter({ stubSequence: [42] }), /string or null/i);
+  assert.throws(() => new WindowsRootPickerAdapter({
+    stubSelection: "D:\\one", stubSequence: ["D:\\two"],
+  }), /exactly one stub mode/i);
+});
+
 test("recycle adapter calls only its injected recoverable operation", async () => {
   const { WindowsRecycleAdapter } = await load("windows-recycle-adapter.js");
   const calls = [];

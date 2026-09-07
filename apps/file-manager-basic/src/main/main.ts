@@ -88,9 +88,18 @@ function createServices() {
   const failAtRaw = process.env.MSSP_FM_FAIL_SCAN_AT;
   const failAt = failAtRaw && /^\d+$/.test(failAtRaw) ? Number(failAtRaw) : null;
   const snapshots = new FaultInjectingSnapshotPort(baseSnapshots, failAt);
-  const pickerOptions = Object.hasOwn(process.env, "MSSP_FM_STUB_ROOT")
-    ? { stubSelection: process.env.MSSP_FM_STUB_ROOT === "__CANCEL__" ? null : process.env.MSSP_FM_STUB_ROOT }
-    : {};
+  let pickerOptions = {};
+  if (Object.hasOwn(process.env, "MSSP_FM_STUB_ROOT_SEQUENCE")) {
+    let sequence: unknown;
+    try { sequence = JSON.parse(process.env.MSSP_FM_STUB_ROOT_SEQUENCE as string); }
+    catch { throw new TypeError("MSSP_FM_STUB_ROOT_SEQUENCE must be valid JSON"); }
+    pickerOptions = { stubSequence: sequence as Array<string | null> };
+  } else if (Object.hasOwn(process.env, "MSSP_FM_STUB_ROOT")) {
+    pickerOptions = {
+      stubSelection: process.env.MSSP_FM_STUB_ROOT === "__CANCEL__"
+        ? null : process.env.MSSP_FM_STUB_ROOT,
+    };
+  }
   const picker = new WindowsRootPickerAdapter(pickerOptions);
   const session = new RootSessionController({
     picker,
