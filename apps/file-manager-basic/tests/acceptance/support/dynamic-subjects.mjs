@@ -213,8 +213,8 @@ export async function withUnreadableEntry(target, readableSibling, run) {
   const resolvedSibling = path.resolve(readableSibling);
   const normalizedTarget = resolvedTarget.replaceAll("\\", "/");
   const normalizedSibling = resolvedSibling.replaceAll("\\", "/");
-  if (!normalizedTarget.startsWith("D:/Ai/work together/.mssp-app2-acl-")
-      || !normalizedSibling.startsWith("D:/Ai/work together/.mssp-app2-acl-")
+  if (!/^D:\/Ai\/work together\/\.mssp-app2-(?:acl|gui)-/.test(normalizedTarget)
+      || !/^D:\/Ai\/work together\/\.mssp-app2-(?:acl|gui)-/.test(normalizedSibling)
       || typeof run !== "function" || !lstatSync(resolvedTarget).isFile()
       || !lstatSync(resolvedSibling).isFile()) {
     throw new TypeError("unreadable-entry paths or callback are invalid");
