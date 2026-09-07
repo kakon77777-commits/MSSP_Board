@@ -26,7 +26,7 @@ import {
   EVIDENCE_KINDS, EXECUTION_ACCEPTANCE_FIELDS, EXECUTION_DRILL_FIELDS,
   EXECUTION_SNAPSHOT_FIELDS, EXECUTION_SNAPSHOT_SCHEMA, EXECUTION_TEST_FIELDS,
   EXECUTION_UNIT_FIELDS, EXTERNAL_EVIDENCE_FIELDS, INDEX_SCHEMA, MEASURED_FIELDS,
-    OWNER_RECORD_FIELDS, PATH_EVIDENCE_FIELDS, PRODUCT_FIELDS, PRODUCT_SCHEMA,
+    OWNER_RECORD_FIELDS, OWNER_ROLE_PATTERN, PATH_EVIDENCE_FIELDS, PRODUCT_FIELDS, PRODUCT_SCHEMA,
   REPOSITORY_SNAPSHOT_EVIDENCE_FIELDS, ROADMAP_FIELDS,
   ROADMAP_POSITION_FIELDS, ROADMAP_SCHEMA, SELECTIONS,
   SELECTION_SNAPSHOT_FIELDS, SELECTION_SNAPSHOT_SCHEMA, STAGE_FIELDS,
@@ -612,7 +612,9 @@ for (const [position, { record, file }] of records) {
     if (!isPlainObject(owner)) { fail(ownerWhere, "owner is not an object"); continue; }
     for (const key of unknownFields(owner, OWNER_RECORD_FIELDS)) fail(ownerWhere, `unknown field ${key}`);
     for (const key of missingFields(owner, OWNER_RECORD_FIELDS)) fail(ownerWhere, `missing field ${key}`);
-    if (!isNonEmptyString(owner.role)) fail(ownerWhere, "role is not a nonempty string");
+    if (!isNonEmptyString(owner.role) || !OWNER_ROLE_PATTERN.test(owner.role)) {
+      fail(ownerWhere, "role is not a canonical lower-snake identifier");
+    }
     if (!isNonEmptyString(owner.speaker)) fail(ownerWhere, "speaker is not a nonempty string");
     if (ownerRoles.has(owner.role)) fail(ownerWhere, `duplicate owner role ${owner.role}`);
     ownerRoles.add(owner.role);

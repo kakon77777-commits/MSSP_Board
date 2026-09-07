@@ -26,6 +26,8 @@ const attacks = [
   ["empty one owner role", (r) => { r.owners[1].role = ""; }],
   ["add unknown owner field", (r) => { r.owners[1].authority = true; }],
   ["change canonical speaker case", (r) => { r.owners[2].speaker = "pragma"; }],
+  ["alias an owner role with trailing whitespace", (r) => { r.owners[1].role = `${r.owners[0].role} `; }],
+  ["alias an owner role by case", (r) => { r.owners[1].role = "Product_build"; }],
 ];
 
 const control = run(verifier);

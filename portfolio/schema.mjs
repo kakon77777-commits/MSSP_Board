@@ -64,6 +64,7 @@ export const EVIDENCE_KINDS = Object.freeze(
   ["commit", "path", "external_digest", "repository_snapshot"]);
 export const CLOSE_FIELDS = Object.freeze(["commit", "tree", "date"]);
 export const OWNER_RECORD_FIELDS = Object.freeze(["role", "speaker"]);
+export const OWNER_ROLE_PATTERN = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/;
 export const CLOSED_OWNER_LABELS = Object.freeze(["Elenchos", "Metron", "Pragma"]);
 export const MEASURED_FIELDS = Object.freeze([
   "tests", "test_failures", "drills", "drill_mutations_surviving",

@@ -15,6 +15,7 @@ test("portfolio owners are variable semantic role records rather than App-1 fixe
     ["role", "speaker"], ["role", "speaker"], ["role", "speaker"],
   ]);
   assert.equal(new Set(record.owners.map((owner) => owner.role)).size, 3);
+  assert.ok(record.owners.every((owner) => /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/.test(owner.role)));
   assert.deepEqual(new Set(record.owners.map((owner) => owner.speaker)),
     new Set(["Elenchos", "Metron", "Pragma"]));
 });
